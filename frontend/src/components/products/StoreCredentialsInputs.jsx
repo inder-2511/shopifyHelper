@@ -1,7 +1,11 @@
+import { useProductOps } from "../../context/ProductOpsContext";
+
 const inputCls =
   "w-full text-sm px-3 py-2 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-400";
 
-function StoreCredentialsInputs({ storeUrl, setStoreUrl, token, setToken }) {
+function StoreCredentialsInputs() {
+  const { storeUrl, setStoreUrl, token, setToken } = useProductOps();
+
   return (
     <div className="grid grid-cols-2 gap-4">
       <div>
@@ -11,10 +15,7 @@ function StoreCredentialsInputs({ storeUrl, setStoreUrl, token, setToken }) {
         <input
           type="text"
           value={storeUrl}
-          onChange={(e) => {
-            setStoreUrl(e.target.value);
-            localStorage.setItem("product_storeUrl", e.target.value);
-          }}
+          onChange={(e) => setStoreUrl(e.target.value)}
           placeholder="mystore.myshopify.com"
           required
           className={inputCls}
@@ -27,10 +28,7 @@ function StoreCredentialsInputs({ storeUrl, setStoreUrl, token, setToken }) {
         <input
           type="password"
           value={token}
-          onChange={(e) => {
-            setToken(e.target.value);
-            localStorage.setItem("product_token", e.target.value);
-          }}
+          onChange={(e) => setToken(e.target.value)}
           placeholder="shpat_..."
           required
           className={inputCls}

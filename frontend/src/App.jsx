@@ -5,7 +5,11 @@ import Orders from "./pages/Orders";
 import DuplicateOrderPage from "./pages/DuplicateOrderPage";
 import FetchOrderPage from "./pages/FetchOrderPage";
 import CustomOrderPage from "./pages/CustomOrderPage";
-import Products from "./pages/Products";
+import ListProductsPage from "./pages/products/ListProductsPage";
+import CreateProductPage from "./pages/products/CreateProductPage";
+import DuplicateProductPage from "./pages/products/DuplicateProductPage";
+import DeleteProductPage from "./pages/products/DeleteProductPage";
+import FetchProductPage from "./pages/products/FetchProductPage";
 import Settings from "./pages/Settings";
 import CreateStore from "./pages/CreateStore";
 import SetupMarketsPage from "./pages/store-setup/SetupMarketsPage";
@@ -14,6 +18,7 @@ import ImportProductsPage from "./pages/store-setup/ImportProductsPage";
 import ActivatePaymentPage from "./pages/store-setup/ActivatePaymentPage";
 import { ActivityProvider } from "./context/ActivityContext";
 import { StoreCreationProvider } from "./context/StoreCreationContext";
+import { ProductOpsProvider } from "./context/ProductOpsContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -23,6 +28,7 @@ function App() {
     <ToastProvider>
     <ActivityProvider>
     <StoreCreationProvider>
+    <ProductOpsProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -32,7 +38,11 @@ function App() {
         <Route path="/orders/custom" element={<CustomOrderPage />} />
         <Route path="/orders/fetch" element={<FetchOrderPage />} />
 
-        <Route path="/products" element={<Products />} />
+        <Route path="/products" element={<ListProductsPage />} />
+        <Route path="/products/create" element={<CreateProductPage />} />
+        <Route path="/products/duplicate" element={<DuplicateProductPage />} />
+        <Route path="/products/delete" element={<DeleteProductPage />} />
+        <Route path="/products/fetch" element={<FetchProductPage />} />
 
         <Route path="/settings" element={<Settings />} />
 
@@ -47,6 +57,7 @@ function App() {
         <Route path="/store-setup/payment" element={<ActivatePaymentPage />} />
       </Routes>
     </BrowserRouter>
+    </ProductOpsProvider>
     </StoreCreationProvider>
     </ActivityProvider>
     </ToastProvider>

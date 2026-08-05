@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Plus, Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { createProductApi } from "../../api/productApi";
-import { useToast } from "../../context/ToastContext";
+import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
 
-function CreateProductForm({ storeUrl, setStoreUrl, token, setToken }) {
-  const { showToast } = useToast();
+function CreateProductForm() {
+  const { createOp, runCreate } = useProductOps();
+  const { loading, result, error } = createOp;
+
   const [title, setTitle] = useState("");
   const [vendor, setVendor] = useState("");
   const [productType, setProductType] = useState("");
@@ -13,55 +14,28 @@ function CreateProductForm({ storeUrl, setStoreUrl, token, setToken }) {
   const [inventory, setInventory] = useState(100);
   const [status, setStatus] = useState("active");
 
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-    setResult(null);
-    setError("");
-
-    try {
-      const payload = {
-        storeUrl,
-        token,
-        title,
-        vendor: vendor || undefined,
-        product_type: productType || undefined,
-        status,
-        variants: [
-          {
-            price,
-            inventory_quantity: Number(inventory),
-            inventory_management: "shopify",
-          },
-        ],
-      };
-      const data = await createProductApi(payload);
-      setResult(data.product);
-      showToast(`Created "${data.product.title}"`, "success");
-      setTitle("");
-    } catch (err) {
-      const msg = err.response?.data?.error ?? err.message ?? "Failed to create product";
-      setError(typeof msg === "object" ? JSON.stringify(msg) : msg);
-      showToast("Failed to create product", "error");
-    } finally {
-      setLoading(false);
-    }
+    runCreate({
+      title,
+      vendor: vendor || undefined,
+      product_type: productType || undefined,
+      status,
+      variants: [
+        {
+          price,
+          inventory_quantity: Number(inventory),
+          inventory_management: "shopify",
+        },
+      ],
+    });
   };
 
   return (
     <div className="space-y-5">
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <StoreCredentialsInputs
-            storeUrl={storeUrl}
-            setStoreUrl={setStoreUrl}
-            token={token}
-            setToken={setToken}
-          />
+          <StoreCredentialsInputs />
 
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">

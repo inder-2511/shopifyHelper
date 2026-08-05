@@ -1,45 +1,23 @@
 import { useState } from "react";
 import { Copy, Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { duplicateProductApi } from "../../api/productApi";
-import { useToast } from "../../context/ToastContext";
+import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
 
-function DuplicateProductForm({ storeUrl, setStoreUrl, token, setToken }) {
-  const { showToast } = useToast();
+function DuplicateProductForm() {
+  const { duplicateOp, runDuplicate } = useProductOps();
+  const { loading, result, error } = duplicateOp;
   const [productId, setProductId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
-    setResult(null);
-    setError("");
-
-    try {
-      const data = await duplicateProductApi(storeUrl, token, productId);
-      setResult(data);
-      showToast(`Duplicated "${data.source.title}" → "${data.product.title}"`, "success");
-    } catch (err) {
-      const msg = err.response?.data?.error ?? err.message ?? "Failed to duplicate product";
-      setError(typeof msg === "object" ? JSON.stringify(msg) : msg);
-      showToast("Failed to duplicate product", "error");
-    } finally {
-      setLoading(false);
-    }
+    runDuplicate(productId);
   };
 
   return (
     <div className="space-y-5">
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <StoreCredentialsInputs
-            storeUrl={storeUrl}
-            setStoreUrl={setStoreUrl}
-            token={token}
-            setToken={setToken}
-          />
+          <StoreCredentialsInputs />
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">
@@ -70,6 +48,13 @@ function DuplicateProductForm({ storeUrl, setStoreUrl, token, setToken }) {
           </p>
         </form>
       </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl px-4 py-3 text-sm text-purple-700 dark:text-purple-300">
+          <Loader2 size={15} className="animate-spin" />
+          Duplicating in progress — you can leave this page; the result will appear here when it's done.
+        </div>
+      )}
 
       {error && (
         <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">

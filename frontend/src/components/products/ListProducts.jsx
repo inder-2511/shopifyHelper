@@ -1,47 +1,18 @@
 import { useState } from "react";
 import { RefreshCcw, ChevronLeft, ChevronRight, Loader2, XCircle } from "lucide-react";
-import { listProductsApi, deleteProductApi } from "../../api/productApi";
-import { useToast } from "../../context/ToastContext";
+import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
 
-function ListProducts({ storeUrl, setStoreUrl, token, setToken }) {
-  const { showToast } = useToast();
+function ListProducts() {
+  const { listOp, runList, deleteOp, runDelete } = useProductOps();
+  const { loading, products, nextPageInfo, previousPageInfo, error } = listOp;
   const [limit, setLimit] = useState(25);
-  const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState([]);
-  const [error, setError] = useState("");
-  const [pageInfo, setPageInfo] = useState(null);
-  const [nextPage, setNextPage] = useState(null);
-  const [prevPage, setPrevPage] = useState(null);
 
-  const fetchPage = async (opts = {}) => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await listProductsApi(storeUrl, token, { limit, ...opts });
-      setProducts(data.products);
-      setNextPage(data.nextPageInfo);
-      setPrevPage(data.previousPageInfo);
-      setPageInfo(opts.pageInfo ?? null);
-    } catch (err) {
-      const msg = err.response?.data?.error ?? err.message ?? "Failed to list products";
-      setError(typeof msg === "object" ? JSON.stringify(msg) : msg);
-      showToast("Failed to list products", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const fetchPage = (opts = {}) => runList({ limit, ...opts });
 
   const handleDelete = async (product) => {
     if (!window.confirm(`Delete "${product.title}"? This cannot be undone.`)) return;
-    try {
-      await deleteProductApi(storeUrl, token, product.id);
-      setProducts((prev) => prev.filter((p) => p.id !== product.id));
-      showToast(`Deleted "${product.title}"`, "success");
-    } catch (err) {
-      showToast("Delete failed", "error");
-      console.error(err);
-    }
+    await runDelete(product.id);
   };
 
   return (
@@ -54,12 +25,7 @@ function ListProducts({ storeUrl, setStoreUrl, token, setToken }) {
           }}
           className="space-y-4"
         >
-          <StoreCredentialsInputs
-            storeUrl={storeUrl}
-            setStoreUrl={setStoreUrl}
-            token={token}
-            setToken={setToken}
-          />
+          <StoreCredentialsInputs />
           <div className="flex gap-3">
             <div className="w-32">
               <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">
@@ -87,6 +53,13 @@ function ListProducts({ storeUrl, setStoreUrl, token, setToken }) {
           </div>
         </form>
       </div>
+
+      {loading && products.length === 0 && (
+        <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl px-4 py-3 text-sm text-purple-700 dark:text-purple-300">
+          <Loader2 size={15} className="animate-spin" />
+          Loading products…
+        </div>
+      )}
 
       {error && (
         <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
@@ -129,7 +102,8 @@ function ListProducts({ storeUrl, setStoreUrl, token, setToken }) {
                     <td className="px-4 py-2.5 text-right">
                       <button
                         onClick={() => handleDelete(p)}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 transition-all"
+                        disabled={deleteOp.loading}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-50 text-red-600 dark:text-red-400 transition-all"
                       >
                         Delete
                       </button>
@@ -146,16 +120,16 @@ function ListProducts({ storeUrl, setStoreUrl, token, setToken }) {
             </span>
             <div className="flex gap-2">
               <button
-                onClick={() => fetchPage({ pageInfo: prevPage })}
-                disabled={!prevPage || loading}
+                onClick={() => fetchPage({ pageInfo: previousPageInfo })}
+                disabled={!previousPageInfo || loading}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 dark:text-slate-200 transition-all"
               >
                 <ChevronLeft size={12} />
                 Prev
               </button>
               <button
-                onClick={() => fetchPage({ pageInfo: nextPage })}
-                disabled={!nextPage || loading}
+                onClick={() => fetchPage({ pageInfo: nextPageInfo })}
+                disabled={!nextPageInfo || loading}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 dark:text-slate-200 transition-all"
               >
                 Next

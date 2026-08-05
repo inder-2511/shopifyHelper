@@ -19,6 +19,14 @@ const orderItems = [
   { name: "Fetch Order",     path: "/orders/fetch" },
 ];
 
+const productItems = [
+  { name: "All Products",      path: "/products" },
+  { name: "Create Product",    path: "/products/create" },
+  { name: "Duplicate Product", path: "/products/duplicate" },
+  { name: "Delete Product",    path: "/products/delete" },
+  { name: "Fetch Product",     path: "/products/fetch" },
+];
+
 const storeSetupItems = [
   { name: "Setup Markets",    path: "/store-setup/markets" },
   { name: "Setup Shipping",   path: "/store-setup/shipping" },
@@ -70,24 +78,21 @@ const HIDE_LOCAL_FEATURES = import.meta.env.VITE_HIDE_LOCAL_FEATURES === "true";
 function Sidebar() {
   const location = useLocation();
 
-  const isOrdersPath    = location.pathname.startsWith("/orders");
+  const isOrdersPath     = location.pathname.startsWith("/orders");
+  const isProductsPath   = location.pathname === "/products" || location.pathname.startsWith("/products/");
   const isStoreSetupPath = location.pathname.startsWith("/store-setup/");
 
   const [ordersOpen,     setOrdersOpen]     = useState(isOrdersPath);
+  const [productsOpen,   setProductsOpen]   = useState(isProductsPath);
   const [storeSetupOpen, setStoreSetupOpen] = useState(isStoreSetupPath);
 
   useEffect(() => {
     if (isOrdersPath)     setOrdersOpen(true);
+    if (isProductsPath)   setProductsOpen(true);
     if (isStoreSetupPath) setStoreSetupOpen(true);
   }, [location.pathname]);
 
-  const topItems = [
-    { name: "Dashboard",    path: "/",            icon: <LayoutDashboard size={20} /> },
-    { name: "Create Store", path: "/create-store", icon: <Store size={20} /> },
-  ];
-
   const bottomItems = [
-    { name: "Products", path: "/products", icon: <Package size={20} /> },
     { name: "Settings", path: "/settings", icon: <Settings size={20} /> },
   ];
 
@@ -122,6 +127,17 @@ function Sidebar() {
             isActive={isOrdersPath}
             open={ordersOpen}
             onToggle={() => setOrdersOpen((p) => !p)}
+            location={location}
+          />
+
+          {/* Products collapsible */}
+          <CollapsibleMenu
+            icon={<Package size={20} />}
+            label="Products"
+            items={productItems}
+            isActive={isProductsPath}
+            open={productsOpen}
+            onToggle={() => setProductsOpen((p) => !p)}
             location={location}
           />
 
