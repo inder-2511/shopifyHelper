@@ -4,6 +4,7 @@ import { faker } from "@faker-js/faker";
 import { ADDRESS_PRESETS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
+import SavedStorePicker from "../common/SavedStorePicker";
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 const FIELD_GROUPS = [
@@ -208,6 +209,8 @@ function CustomOrderForm() {
         </div>
 
         <form id="custom-order-form" onSubmit={handleSubmit} className="space-y-4">
+          <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreUrl(u); setToken(t); }} />
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Store URL</label>

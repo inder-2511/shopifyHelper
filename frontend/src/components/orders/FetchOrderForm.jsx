@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Search, Copy, Download, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import { useToast } from "../../context/ToastContext";
+import SavedStorePicker from "../common/SavedStorePicker";
 
 function FetchOrderForm() {
   const { showToast } = useToast();
@@ -38,6 +39,8 @@ function FetchOrderForm() {
     <div className="space-y-5">
       <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
         <form onSubmit={handleFetch} className="space-y-4">
+          <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreUrl(u); setToken(t); }} />
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">Store URL</label>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Hash, Loader2, XCircle, Copy } from "lucide-react";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
+import SavedStorePicker from "../common/SavedStorePicker";
 
 function DuplicateOrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, duplicateOp, runDuplicateBatch, cancelOp } = useOrderOps();
@@ -26,6 +27,8 @@ function DuplicateOrderForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreUrl(u); setToken(t); }} />
+
           <div>
             <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Store URL</label>
             <input type="text" placeholder="your-store.myshopify.com" value={storeUrl}

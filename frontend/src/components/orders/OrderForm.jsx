@@ -3,6 +3,7 @@ import { Hash, Loader2, XCircle } from "lucide-react";
 import { buildOrderPayload, ADDRESS_PRESETS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
+import SavedStorePicker from "../common/SavedStorePicker";
 
 function OrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, createOp, runCreateBatch, cancelOp } = useOrderOps();
@@ -31,6 +32,8 @@ function OrderForm() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreUrl(u); setToken(t); }} />
+
           <div>
             <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Store URL</label>
             <input type="text" placeholder="your-store.myshopify.com" value={storeUrl}
