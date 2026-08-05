@@ -6,13 +6,13 @@ import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
 import SavedStorePicker from "../common/SavedStorePicker";
 import ErrorBanner from "../common/ErrorBanner";
+import VariantPicker from "./VariantPicker";
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 const FIELD_GROUPS = [
   {
     label: "Line Item",
     fields: [
-      { key: "variant_id",         label: "Variant ID",         type: "number",  placeholder: "46204783198466", default: "",      required: true },
       { key: "quantity",           label: "Quantity",           type: "number",  placeholder: "1",              default: "1",     required: true },
       { key: "price",              label: "Price",              type: "number",  placeholder: "10.00",          default: "10.00", required: true },
       { key: "requires_shipping",  label: "Requires Shipping",  type: "select",  options: [["true","Yes"],["false","No"]],        default: "true" },
@@ -93,8 +93,9 @@ function CustomOrderForm() {
 
   const [addressPreset, setAddressPreset] = useState("US");
   const [orderCount, setOrderCount]       = useState(1);
+  const [variantId, setVariantId]         = useState("");
 
-  const [enabled, setEnabled] = useState({ variant_id: true, quantity: true, price: true });
+  const [enabled, setEnabled] = useState({ quantity: true, price: true });
   const [values,  setValues]  = useState(() => {
     const init = {};
     ALL_FIELDS.forEach((f) => { init[f.key] = f.default; });
@@ -137,7 +138,7 @@ function CustomOrderForm() {
       shipping_address:     address,
       billing_address:      address,
       line_items: [{
-        variant_id:        Number(get("variant_id")),
+        variant_id:        Number(variantId),
         quantity:          Number(get("quantity")),
         price:             get("price"),
         requires_shipping: get("requires_shipping") === "true",
@@ -248,6 +249,15 @@ function CustomOrderForm() {
                   className="w-full bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 focus:border-purple-500 outline-none rounded-xl py-2.5 pl-9 pr-3 text-sm text-gray-800 dark:text-slate-100 transition-colors" />
               </div>
             </div>
+          </div>
+
+          <div className="pt-2 border-t border-gray-100 dark:border-slate-700">
+            <VariantPicker
+              storeUrl={storeUrl}
+              token={token}
+              value={variantId}
+              onChange={setVariantId}
+            />
           </div>
         </form>
       </div>

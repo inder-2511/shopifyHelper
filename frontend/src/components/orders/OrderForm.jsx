@@ -5,6 +5,7 @@ import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
 import SavedStorePicker from "../common/SavedStorePicker";
 import ErrorBanner from "../common/ErrorBanner";
+import VariantPicker from "./VariantPicker";
 
 function OrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, createOp, runCreateBatch, cancelOp, clearError } = useOrderOps();
@@ -50,11 +51,13 @@ function OrderForm() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Variant ID</label>
-              <input type="number" value={variantId}
-                onChange={(e) => { setVariantId(e.target.value); localStorage.setItem("order_variantId", e.target.value); }}
-                className={inputCls} />
+            <div className="col-span-2">
+              <VariantPicker
+                storeUrl={storeUrl}
+                token={token}
+                value={variantId}
+                onChange={(id) => { setVariantId(id); localStorage.setItem("order_variantId", id); }}
+              />
             </div>
 
             <div>
