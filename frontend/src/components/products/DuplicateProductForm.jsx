@@ -1,0 +1,96 @@
+import { useState } from "react";
+import { Copy, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { duplicateProductApi } from "../../api/productApi";
+import { useToast } from "../../context/ToastContext";
+import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
+
+function DuplicateProductForm({ storeUrl, setStoreUrl, token, setToken }) {
+  const { showToast } = useToast();
+  const [productId, setProductId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setResult(null);
+    setError("");
+
+    try {
+      const data = await duplicateProductApi(storeUrl, token, productId);
+      setResult(data);
+      showToast(`Duplicated "${data.source.title}" → "${data.product.title}"`, "success");
+    } catch (err) {
+      const msg = err.response?.data?.error ?? err.message ?? "Failed to duplicate product";
+      setError(typeof msg === "object" ? JSON.stringify(msg) : msg);
+      showToast("Failed to duplicate product", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <StoreCredentialsInputs
+            storeUrl={storeUrl}
+            setStoreUrl={setStoreUrl}
+            token={token}
+            setToken={setToken}
+          />
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1">
+                Source Product ID or Title
+              </label>
+              <input
+                type="text"
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                placeholder="1234567890 or Wireless earbuds"
+                required
+                className={productInputCls}
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold transition-all"
+              >
+                {loading ? <Loader2 size={15} className="animate-spin" /> : <Copy size={15} />}
+                {loading ? "Duplicating…" : "Duplicate"}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            The copy is created as a <strong>draft</strong> with " (Copy)" appended to the title.
+          </p>
+        </form>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
+          <XCircle size={15} className="shrink-0 mt-0.5" />
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">
+            <CheckCircle2 size={15} className="text-green-500" />
+            Duplicated — new ID {result.product.id}
+          </div>
+          <pre className="text-xs text-gray-700 dark:text-slate-300 leading-relaxed font-mono whitespace-pre-wrap break-all overflow-auto max-h-[400px]">
+            {JSON.stringify(result.product, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default DuplicateProductForm;

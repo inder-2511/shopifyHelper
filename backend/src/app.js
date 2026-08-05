@@ -2,6 +2,7 @@ import "./utils/logBus.js"; // activate console.log intercept before anything el
 import express from "express";
 import cors from "cors";
 import orderRoutes from "./routes/orderRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
 import shippingRoutes from "./routes/shippingRoutes.js";
 import storeSetupRoutes from "./routes/storeSetupRoutes.js";
@@ -25,6 +26,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/orders", orderRoutes);
+app.use("/api/products", productRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/store-setup", storeSetupRoutes);
