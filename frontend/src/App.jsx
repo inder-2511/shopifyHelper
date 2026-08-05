@@ -19,6 +19,7 @@ import ActivatePaymentPage from "./pages/store-setup/ActivatePaymentPage";
 import { ActivityProvider } from "./context/ActivityContext";
 import { StoreCreationProvider } from "./context/StoreCreationContext";
 import { ProductOpsProvider } from "./context/ProductOpsContext";
+import { SavedStoresProvider } from "./context/SavedStoresContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -27,6 +28,7 @@ function App() {
     <ThemeProvider>
     <ToastProvider>
     <ActivityProvider>
+    <SavedStoresProvider>
     <StoreCreationProvider>
     <ProductOpsProvider>
     <BrowserRouter>
@@ -59,6 +61,7 @@ function App() {
     </BrowserRouter>
     </ProductOpsProvider>
     </StoreCreationProvider>
+    </SavedStoresProvider>
     </ActivityProvider>
     </ToastProvider>
     </ThemeProvider>
