@@ -1,12 +1,15 @@
 import { chromium } from "playwright";
 import fs from "fs";
 import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { importProductsFromCSV } from "../../services/shopify/importCsvService.js";
 import { setupMarkets } from "./setupMarkets.js";
 import { setupShipping } from "./setupShippingService.js";
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 const BROWSER_DATA_DIR = "./playwright-user-data";
 const SESSION_FILE = "auth-partner.json";

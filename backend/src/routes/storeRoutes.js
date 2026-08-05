@@ -1,8 +1,11 @@
 import express from "express";
 import { createStore } from "../controllers/storeController.js";
 import { logBus } from "../utils/logBus.js";
+import { localOnly } from "../middleware/localOnly.js";
 
 const router = express.Router();
+
+router.use(localOnly);
 
 router.post("/create", createStore);
 

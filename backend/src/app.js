@@ -8,7 +8,16 @@ import storeSetupRoutes from "./routes/storeSetupRoutes.js";
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: allowedOrigins.length ? allowedOrigins : true,
+  })
+);
 app.use(express.json());
 
 app.get("/", (req, res) => {

@@ -65,6 +65,8 @@ function CollapsibleMenu({ icon, label, items, isActive, open, onToggle, locatio
   );
 }
 
+const HIDE_LOCAL_FEATURES = import.meta.env.VITE_HIDE_LOCAL_FEATURES === "true";
+
 function Sidebar() {
   const location = useLocation();
 
@@ -123,27 +125,31 @@ function Sidebar() {
             location={location}
           />
 
-          {/* Create Store */}
-          <Link
-            to="/create-store"
-            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
-              location.pathname === "/create-store" ? "bg-gradient-to-r from-purple-600 to-purple-500" : "hover:bg-white/10"
-            }`}
-          >
-            <Store size={20} />
-            <span className="text-lg">Create Store</span>
-          </Link>
+          {/* Create Store — local only (Playwright) */}
+          {!HIDE_LOCAL_FEATURES && (
+            <Link
+              to="/create-store"
+              className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
+                location.pathname === "/create-store" ? "bg-gradient-to-r from-purple-600 to-purple-500" : "hover:bg-white/10"
+              }`}
+            >
+              <Store size={20} />
+              <span className="text-lg">Create Store</span>
+            </Link>
+          )}
 
-          {/* Store Setup collapsible */}
-          <CollapsibleMenu
-            icon={<Wrench size={20} />}
-            label="Store Setup"
-            items={storeSetupItems}
-            isActive={isStoreSetupPath}
-            open={storeSetupOpen}
-            onToggle={() => setStoreSetupOpen((p) => !p)}
-            location={location}
-          />
+          {/* Store Setup collapsible — local only (Playwright) */}
+          {!HIDE_LOCAL_FEATURES && (
+            <CollapsibleMenu
+              icon={<Wrench size={20} />}
+              label="Store Setup"
+              items={storeSetupItems}
+              isActive={isStoreSetupPath}
+              open={storeSetupOpen}
+              onToggle={() => setStoreSetupOpen((p) => !p)}
+              location={location}
+            />
+          )}
 
           {/* Bottom items */}
           {bottomItems.map((item) => (
