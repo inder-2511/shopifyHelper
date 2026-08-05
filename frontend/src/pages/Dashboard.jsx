@@ -17,14 +17,14 @@ import {
 import MainLayout from "../components/layout/MainLayout";
 import { useActivity } from "../context/ActivityContext";
 
-const quickActions = [
+const HIDE_LOCAL_FEATURES = import.meta.env.VITE_HIDE_LOCAL_FEATURES === "true";
+
+const quickActionsAll = [
   {
     label: "Create Order",
     description: "Place a new Shopify order",
     path: "/orders",
     icon: ShoppingBag,
-    light: "bg-violet-50 text-violet-600 border-violet-100",
-    dark: "dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-900/40",
     iconBg: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
   },
   {
@@ -32,62 +32,13 @@ const quickActions = [
     description: "Re-create an existing order",
     path: "/orders/duplicate",
     icon: Copy,
-    light: "bg-purple-50 text-purple-600 border-purple-100",
-    dark: "dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/40",
     iconBg: "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
-  },
-  {
-    label: "Create Store",
-    description: "Spin up a dev store automatically",
-    path: "/create-store",
-    icon: Store,
-    light: "bg-indigo-50 text-indigo-600 border-indigo-100",
-    dark: "dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-900/40",
-    iconBg: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
-  },
-  {
-    label: "Setup Markets",
-    description: "Configure Domestic + International",
-    path: "/store-setup/markets",
-    icon: Globe,
-    light: "bg-sky-50 text-sky-600 border-sky-100",
-    dark: "dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-900/40",
-    iconBg: "bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400",
-  },
-  {
-    label: "Setup Shipping",
-    description: "US Warehouse + delivery zones",
-    path: "/store-setup/shipping",
-    icon: Truck,
-    light: "bg-teal-50 text-teal-600 border-teal-100",
-    dark: "dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-900/40",
-    iconBg: "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400",
-  },
-  {
-    label: "Import Products",
-    description: "Import from CSV with inventory",
-    path: "/store-setup/products",
-    icon: Package,
-    light: "bg-emerald-50 text-emerald-600 border-emerald-100",
-    dark: "dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/40",
-    iconBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
-  },
-  {
-    label: "Activate Payment",
-    description: "Enable third-party payment provider",
-    path: "/store-setup/payment",
-    icon: CreditCard,
-    light: "bg-pink-50 text-pink-600 border-pink-100",
-    dark: "dark:bg-pink-900/20 dark:text-pink-400 dark:border-pink-900/40",
-    iconBg: "bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
   },
   {
     label: "Custom Order",
     description: "Build an order with full field control",
     path: "/orders/custom",
     icon: Sliders,
-    light: "bg-orange-50 text-orange-600 border-orange-100",
-    dark: "dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-900/40",
     iconBg: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
   },
   {
@@ -95,11 +46,58 @@ const quickActions = [
     description: "Look up any order and view its JSON",
     path: "/orders/fetch",
     icon: Search,
-    light: "bg-cyan-50 text-cyan-600 border-cyan-100",
-    dark: "dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-900/40",
     iconBg: "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400",
   },
+  {
+    label: "All Products",
+    description: "Browse products across a store",
+    path: "/products",
+    icon: Package,
+    iconBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+  },
+  {
+    label: "Create Store",
+    description: "Spin up a dev store automatically",
+    path: "/create-store",
+    icon: Store,
+    iconBg: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
+    localOnly: true,
+  },
+  {
+    label: "Setup Markets",
+    description: "Configure Domestic + International",
+    path: "/store-setup/markets",
+    icon: Globe,
+    iconBg: "bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400",
+    localOnly: true,
+  },
+  {
+    label: "Setup Shipping",
+    description: "US Warehouse + delivery zones",
+    path: "/store-setup/shipping",
+    icon: Truck,
+    iconBg: "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400",
+    localOnly: true,
+  },
+  {
+    label: "Import Products",
+    description: "Import from CSV with inventory",
+    path: "/store-setup/products",
+    icon: Package,
+    iconBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+    localOnly: true,
+  },
+  {
+    label: "Activate Payment",
+    description: "Enable third-party payment provider",
+    path: "/store-setup/payment",
+    icon: CreditCard,
+    iconBg: "bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
+    localOnly: true,
+  },
 ];
+
+const quickActions = quickActionsAll.filter((a) => !(HIDE_LOCAL_FEATURES && a.localOnly));
 
 const TYPE_ICON_STYLE = {
   order: { icon: ShoppingBag, style: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400" },

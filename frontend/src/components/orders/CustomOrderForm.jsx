@@ -1,15 +1,9 @@
-import { useState, useRef } from "react";
-import { Hash, Loader2, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Sliders } from "lucide-react";
+import { useState } from "react";
+import { Hash, Loader2, XCircle, Sliders } from "lucide-react";
 import { faker } from "@faker-js/faker";
-import { createOrderApi } from "../../api/orderApi";
 import { ADDRESS_PRESETS } from "../../utils/orderPayload";
-import { useActivity } from "../../context/ActivityContext";
-import { useToast } from "../../context/ToastContext";
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const MAX_RETRIES = 50;
-const ORDER_INTERVAL_MS = 16_000;
-const PAGE_SIZE = 20;
+import { useOrderOps } from "../../context/OrderOpsContext";
+import OrderResultsPanel from "./OrderResultsPanel";
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 const FIELD_GROUPS = [
@@ -91,17 +85,13 @@ const FIELD_GROUPS = [
 const ALL_FIELDS = FIELD_GROUPS.flatMap((g) => g.fields);
 const defaultOf  = (key) => ALL_FIELDS.find((f) => f.key === key)?.default ?? "";
 
-// ─── Component ────────────────────────────────────────────────────────────────
 function CustomOrderForm() {
-  const { addActivity } = useActivity();
-  const { showToast }   = useToast();
+  const { storeUrl, setStoreUrl, token, setToken, customOp, runCustomBatch, cancelOp } = useOrderOps();
+  const { loading, progress, orders } = customOp;
 
-  const [storeUrl, setStoreUrl] = useState(() => localStorage.getItem("order_storeUrl") ?? "");
-  const [token, setToken]       = useState(() => localStorage.getItem("order_token") ?? "");
   const [addressPreset, setAddressPreset] = useState("US");
   const [orderCount, setOrderCount]       = useState(1);
 
-  // required fields always have values; others start unchecked
   const [enabled, setEnabled] = useState({ variant_id: true, quantity: true, price: true });
   const [values,  setValues]  = useState(() => {
     const init = {};
@@ -109,17 +99,10 @@ function CustomOrderForm() {
     return init;
   });
 
-  const [loading, setLoading]             = useState(false);
-  const [progress, setProgress]           = useState(null);
-  const [createdOrders, setCreatedOrders] = useState([]);
-  const [page, setPage]                   = useState(1);
-  const cancelRef = useRef(false);
-
   const toggle   = (key) => setEnabled((p) => ({ ...p, [key]: !p[key] }));
   const setValue = (key, val) => setValues((p) => ({ ...p, [key]: val }));
   const get      = (key) => (enabled[key] ? values[key] : defaultOf(key));
 
-  // ─── Build Shopify payload ──────────────────────────────────────────────────
   const buildPayload = () => {
     const preset = ADDRESS_PRESETS[addressPreset] ?? ADDRESS_PRESETS.US;
     const phone  = get("phone") || faker.helpers.arrayElement(preset.phones);
@@ -160,7 +143,6 @@ function CustomOrderForm() {
       }],
     };
 
-    // only include transaction block if any txn field is enabled
     const hasTxn = ["txn_gateway","txn_kind","txn_status","txn_amount"].some((k) => enabled[k]);
     if (hasTxn) {
       payload.transactions = [{
@@ -171,7 +153,6 @@ function CustomOrderForm() {
       }];
     }
 
-    // shipping lines
     if (enabled["shipping_title"] || enabled["shipping_price"]) {
       payload.shipping_lines = [{
         title: get("shipping_title") || "Standard Shipping",
@@ -188,55 +169,11 @@ function CustomOrderForm() {
     return payload;
   };
 
-  // ─── Submit ─────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    cancelRef.current = false;
-    setLoading(true);
-    setProgress({ done: 0, total: orderCount });
-    setCreatedOrders([]);
-    setPage(1);
-
-    let done = 0;
-    try {
-      for (let i = 0; i < orderCount; i++) {
-        if (cancelRef.current) break;
-        if (orderCount > 5 && i > 0) await sleep(ORDER_INTERVAL_MS);
-        if (cancelRef.current) break;
-
-        let result;
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-          if (cancelRef.current) break;
-          try {
-            result = await createOrderApi({ ...buildPayload(), storeUrl, token });
-            break;
-          } catch (err) {
-            if (attempt === MAX_RETRIES) throw err;
-            await sleep(err.response?.status === 429 ? 65_000 : 3_000);
-          }
-        }
-        if (!result) break;
-
-        const order = result.order;
-        done += 1;
-        setCreatedOrders((prev) => [
-          { id: order.id, name: order.name, status: order.financial_status, total: order.total_price, currency: order.currency, createdAt: new Date(order.created_at).toLocaleTimeString() },
-          ...prev,
-        ]);
-        setProgress({ done, total: orderCount });
-        addActivity("order", `Custom ${order.name} on ${storeUrl}`);
-      }
-      showToast(`${done} custom order${done !== 1 ? "s" : ""} created!`, "success");
-    } catch (err) {
-      console.log(err);
-      showToast(err.response?.data?.error ?? "Failed to create order.", "error");
-    } finally {
-      setLoading(false);
-      setProgress(null);
-    }
+    runCustomBatch(buildPayload(), orderCount);
   };
 
-  // ─── Render helpers ──────────────────────────────────────────────────────────
   const inputCls = "bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 focus:border-purple-500 outline-none rounded-lg py-1.5 px-2.5 text-sm text-gray-800 dark:text-slate-100 transition-colors w-full";
 
   const renderInput = (field) => {
@@ -258,16 +195,6 @@ function CustomOrderForm() {
     );
   };
 
-  const statusColor = (s) => {
-    if (s === "paid")    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-    if (s === "pending") return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
-    return "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-400";
-  };
-
-  const totalPages = Math.max(1, Math.ceil(createdOrders.length / PAGE_SIZE));
-  const safePage   = Math.min(page, totalPages);
-  const pageOrders = createdOrders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
   return (
     <div className="grid grid-cols-3 gap-6">
 
@@ -285,14 +212,14 @@ function CustomOrderForm() {
             <div>
               <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Store URL</label>
               <input type="text" placeholder="your-store.myshopify.com" value={storeUrl}
-                onChange={(e) => { setStoreUrl(e.target.value); localStorage.setItem("order_storeUrl", e.target.value); }}
+                onChange={(e) => setStoreUrl(e.target.value)}
                 className="w-full bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 focus:border-purple-500 outline-none rounded-xl py-2.5 px-3 text-sm text-gray-800 dark:text-slate-100 transition-colors"
                 required />
             </div>
             <div>
               <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Access Token</label>
               <input type="text" placeholder="shpat_..." value={token}
-                onChange={(e) => { setToken(e.target.value); localStorage.setItem("order_token", e.target.value); }}
+                onChange={(e) => setToken(e.target.value)}
                 className="w-full bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 focus:border-purple-500 outline-none rounded-xl py-2.5 px-3 text-sm text-gray-800 dark:text-slate-100 transition-colors"
                 required />
             </div>
@@ -380,7 +307,7 @@ function CustomOrderForm() {
           )}
         </button>
         {loading && (
-          <button type="button" onClick={() => { cancelRef.current = true; }}
+          <button type="button" onClick={() => cancelOp("custom")}
             className="px-5 py-3 rounded-xl text-base font-semibold border-2 border-red-400 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center gap-2 shrink-0">
             <XCircle size={18} />
             Cancel
@@ -388,83 +315,7 @@ function CustomOrderForm() {
         )}
       </div>
 
-      {/* Progress bar */}
-      {loading && progress && (
-        <div className="col-span-3 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-4">
-          <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-2">
-            <span>{progress.done} of {progress.total} orders created</span>
-            <span>{Math.round((progress.done / progress.total) * 100)}%</span>
-          </div>
-          <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-300"
-              style={{ width: `${(progress.done / progress.total) * 100}%` }} />
-          </div>
-        </div>
-      )}
-
-      {/* Created orders table */}
-      {createdOrders.length > 0 && (
-        <div className="col-span-3 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-gray-800 dark:text-slate-100">Created Orders</h3>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{createdOrders.length} order{createdOrders.length !== 1 ? "s" : ""} this session</p>
-            </div>
-            <div className="flex items-center gap-2 text-emerald-500">
-              <CheckCircle2 size={16} />
-              <span className="text-xs font-semibold">{createdOrders.length} created</span>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-slate-700">
-                  {["#","Order","Status","Total","Time"].map((h) => (
-                    <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pageOrders.map((order, idx) => {
-                  const globalIdx = (safePage - 1) * PAGE_SIZE + idx;
-                  return (
-                    <tr key={order.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-6 py-3 text-xs text-gray-400 dark:text-slate-500">{createdOrders.length - globalIdx}</td>
-                      <td className="px-6 py-3 font-semibold text-gray-800 dark:text-slate-100">{order.name}</td>
-                      <td className="px-6 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor(order.status)}`}>{order.status}</span>
-                      </td>
-                      <td className="px-6 py-3 text-gray-700 dark:text-slate-300">{order.currency} {order.total}</td>
-                      <td className="px-6 py-3 text-gray-400 dark:text-slate-500 text-xs">{order.createdAt}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {totalPages > 1 && (
-            <div className="px-6 py-3 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between">
-              <p className="text-xs text-gray-400 dark:text-slate-500">Page {safePage} of {totalPages} — {createdOrders.length} total</p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:border-purple-400 hover:text-purple-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                  <ChevronLeft size={14} />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => setPage(p)}
-                    className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${p === safePage ? "bg-purple-600 text-white" : "border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:border-purple-400 hover:text-purple-500"}`}>
-                    {p}
-                  </button>
-                ))}
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                  className="p-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:border-purple-400 hover:text-purple-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="created" />
     </div>
   );
 }
