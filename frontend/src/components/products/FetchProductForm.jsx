@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Search, Copy, Download, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Search, Copy, Download, CheckCircle2, Loader2 } from "lucide-react";
 import { useProductOps } from "../../context/ProductOpsContext";
 import { useToast } from "../../context/ToastContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
+import ErrorBanner from "../common/ErrorBanner";
 
 function FetchProductForm() {
-  const { fetchOp, runFetch } = useProductOps();
+  const { fetchOp, runFetch, clearError } = useProductOps();
   const { loading, result: product, error } = fetchOp;
   const { showToast } = useToast();
 
@@ -75,12 +76,11 @@ function FetchProductForm() {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
-          <XCircle size={15} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
+      <ErrorBanner
+        error={error}
+        onRetry={() => { clearError("fetch"); if (productId) runFetch(productId); }}
+        onDismiss={() => clearError("fetch")}
+      />
 
       {product && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">

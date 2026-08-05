@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Plus, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Loader2, CheckCircle2 } from "lucide-react";
 import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
+import ErrorBanner from "../common/ErrorBanner";
 
 function CreateProductForm() {
-  const { createOp, runCreate } = useProductOps();
+  const { createOp, runCreate, clearError } = useProductOps();
   const { loading, result, error } = createOp;
 
   const [title, setTitle] = useState("");
@@ -131,12 +132,11 @@ function CreateProductForm() {
         </form>
       </div>
 
-      {error && (
-        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
-          <XCircle size={15} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
+      <ErrorBanner
+        error={error}
+        onRetry={() => { clearError("create"); handleSubmit({ preventDefault: () => {} }); }}
+        onDismiss={() => clearError("create")}
+      />
 
       {result && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Copy, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Copy, Loader2, CheckCircle2 } from "lucide-react";
 import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
+import ErrorBanner from "../common/ErrorBanner";
 
 function DuplicateProductForm() {
-  const { duplicateOp, runDuplicate } = useProductOps();
+  const { duplicateOp, runDuplicate, clearError } = useProductOps();
   const { loading, result, error } = duplicateOp;
   const [productId, setProductId] = useState("");
 
@@ -56,12 +57,11 @@ function DuplicateProductForm() {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
-          <XCircle size={15} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
+      <ErrorBanner
+        error={error}
+        onRetry={() => { clearError("duplicate"); if (productId) runDuplicate(productId); }}
+        onDismiss={() => clearError("duplicate")}
+      />
 
       {result && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">

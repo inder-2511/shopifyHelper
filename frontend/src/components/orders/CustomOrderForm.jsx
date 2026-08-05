@@ -5,6 +5,7 @@ import { ADDRESS_PRESETS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
 import SavedStorePicker from "../common/SavedStorePicker";
+import ErrorBanner from "../common/ErrorBanner";
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 const FIELD_GROUPS = [
@@ -87,8 +88,8 @@ const ALL_FIELDS = FIELD_GROUPS.flatMap((g) => g.fields);
 const defaultOf  = (key) => ALL_FIELDS.find((f) => f.key === key)?.default ?? "";
 
 function CustomOrderForm() {
-  const { storeUrl, setStoreUrl, token, setToken, customOp, runCustomBatch, cancelOp } = useOrderOps();
-  const { loading, progress, orders } = customOp;
+  const { storeUrl, setStoreUrl, token, setToken, customOp, runCustomBatch, cancelOp, clearError } = useOrderOps();
+  const { loading, progress, orders, error, errorContext } = customOp;
 
   const [addressPreset, setAddressPreset] = useState("US");
   const [orderCount, setOrderCount]       = useState(1);
@@ -317,6 +318,17 @@ function CustomOrderForm() {
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="col-span-3">
+          <ErrorBanner
+            error={error}
+            context={errorContext}
+            onRetry={() => { clearError("custom"); handleSubmit({ preventDefault: () => {} }); }}
+            onDismiss={() => clearError("custom")}
+          />
+        </div>
+      )}
 
       <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="created" />
     </div>

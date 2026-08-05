@@ -6,27 +6,24 @@ import {
 } from "../api/orderApi";
 import { useActivity } from "./ActivityContext";
 import { useToast } from "./ToastContext";
+import { classifyError } from "../utils/errorClassifier";
 
 const OrderOpsContext = createContext(null);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const MAX_RETRIES = 50;
+const MAX_RETRIABLE_ATTEMPTS = 5;
 const ORDER_INTERVAL_MS = 16_000;
 
 const idleBatch = {
   loading: false,
-  progress: null,       // { done, total }
-  orders: [],           // shape: { id, name, source?, status, total, currency, createdAt }
-  error: "",
+  progress: null,       // { done, total, currentAttempt? }
+  orders: [],
+  error: null,          // classified error object
+  errorContext: "",     // e.g. "on order 3 of 10"
   cancelled: false,
 };
 
-const idleFetch = { loading: false, order: null, error: "" };
-
-const errText = (err, fallback) => {
-  const msg = err.response?.data?.error ?? err.message ?? fallback;
-  return typeof msg === "object" ? JSON.stringify(msg) : msg;
-};
+const idleFetch = { loading: false, order: null, error: null };
 
 export function OrderOpsProvider({ children }) {
   const { addActivity } = useActivity();
@@ -65,7 +62,7 @@ export function OrderOpsProvider({ children }) {
     custom:    setCustomOp,
   };
 
-  const runBatch = async (opKey, count, singleRunner, activityLabel) => {
+  const runBatch = async (opKey, count, singleRunner, activityLabel, verb) => {
     const setOp = setters[opKey];
     const cancelRef = cancelRefs[opKey];
 
@@ -73,7 +70,7 @@ export function OrderOpsProvider({ children }) {
     cancelRef.current = false;
 
     let done = 0;
-    const collected = [];
+    let stopped = null; // classified error if we bail
 
     try {
       for (let i = 0; i < count; i++) {
@@ -83,16 +80,32 @@ export function OrderOpsProvider({ children }) {
         if (cancelRef.current) break;
 
         let result;
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        let lastError;
+        for (let attempt = 1; attempt <= MAX_RETRIABLE_ATTEMPTS; attempt++) {
           if (cancelRef.current) break;
           try {
             result = await singleRunner();
+            lastError = null;
             break;
           } catch (err) {
-            if (attempt === MAX_RETRIES) throw err;
-            await sleep(err.response?.status === 429 ? 65_000 : 3_000);
+            lastError = err;
+            const classified = classifyError(err);
+            if (!classified.retriable) {
+              // Non-transient — stop the whole batch and surface the error
+              stopped = { classified, at: i + 1 };
+              break;
+            }
+            if (attempt === MAX_RETRIABLE_ATTEMPTS) {
+              // Exhausted retries on a transient error — treat as terminal
+              stopped = { classified, at: i + 1 };
+              break;
+            }
+            const backoff = classified.kind === "rate_limit" ? 65_000 : 3_000 * attempt;
+            await sleep(backoff);
           }
         }
+
+        if (stopped) break;
         if (!result) break;
 
         const order = result.order ?? result;
@@ -105,7 +118,6 @@ export function OrderOpsProvider({ children }) {
           currency: order.currency,
           createdAt: new Date(order.created_at ?? Date.now()).toLocaleTimeString(),
         };
-        collected.unshift(entry);
         done += 1;
         setOp((prev) => ({
           ...prev,
@@ -114,12 +126,24 @@ export function OrderOpsProvider({ children }) {
         }));
         if (activityLabel) addActivity("order", activityLabel(order, result));
       }
-      showToast(`${done} order${done !== 1 ? "s" : ""} ${opKey === "duplicate" ? "duplicated" : "created"}!`, "success");
-      setOp((prev) => ({ ...prev, loading: false, cancelled: cancelRef.current }));
+
+      if (stopped) {
+        setOp((prev) => ({
+          ...prev,
+          loading: false,
+          error: stopped.classified,
+          errorContext: count > 1 ? `stopped at order ${stopped.at} of ${count} — ${done} succeeded` : "",
+        }));
+        showToast(stopped.classified.title, "error");
+      } else {
+        showToast(`${done} order${done !== 1 ? "s" : ""} ${verb}!`, "success");
+        setOp((prev) => ({ ...prev, loading: false, cancelled: cancelRef.current }));
+      }
     } catch (err) {
-      const msg = errText(err, "Failed to run batch");
-      showToast(msg, "error");
-      setOp((prev) => ({ ...prev, loading: false, error: msg }));
+      // Should be unreachable — errors are caught above. Guard anyway.
+      const classified = classifyError(err);
+      setOp((prev) => ({ ...prev, loading: false, error: classified }));
+      showToast(classified.title, "error");
     } finally {
       cancelRef.current = false;
     }
@@ -130,7 +154,8 @@ export function OrderOpsProvider({ children }) {
       "create",
       count,
       () => createOrderApi({ ...payload, storeUrl, token }),
-      (order) => `${order.name} on ${storeUrl}`
+      (order) => `${order.name} on ${storeUrl}`,
+      "created"
     );
 
   const runDuplicateBatch = (orderName, count) =>
@@ -138,7 +163,8 @@ export function OrderOpsProvider({ children }) {
       "duplicate",
       count,
       () => duplicateOrderApi(storeUrl, token, orderName),
-      (order, result) => `Duplicated ${result.source?.name ?? orderName} → ${order.name} on ${storeUrl}`
+      (order, result) => `Duplicated ${result.source?.name ?? orderName} → ${order.name} on ${storeUrl}`,
+      "duplicated"
     );
 
   const runCustomBatch = (payload, count) =>
@@ -146,29 +172,31 @@ export function OrderOpsProvider({ children }) {
       "custom",
       count,
       () => createOrderApi({ ...payload, storeUrl, token }),
-      (order) => `Custom ${order.name} on ${storeUrl}`
+      (order) => `Custom ${order.name} on ${storeUrl}`,
+      "created"
     );
 
   const cancelOp = (opKey) => {
     if (cancelRefs[opKey]) cancelRefs[opKey].current = true;
   };
 
-  const clearOp = (opKey) => {
+  const clearError = (opKey) => {
     const setOp = setters[opKey];
-    if (setOp) setOp(idleBatch);
-    if (opKey === "fetch") setFetchOp(idleFetch);
+    if (setOp) setOp((prev) => ({ ...prev, error: null, errorContext: "" }));
+    if (opKey === "fetch") setFetchOp((prev) => ({ ...prev, error: null }));
   };
 
   const runFetch = async (orderId) => {
     if (fetchOp.loading) return;
-    setFetchOp({ loading: true, order: null, error: "" });
+    setFetchOp({ loading: true, order: null, error: null });
     try {
       const order = await fetchOrderApi(storeUrl, token, orderId);
-      setFetchOp({ loading: false, order, error: "" });
+      setFetchOp({ loading: false, order, error: null });
       showToast(`Fetched order ${order.name ?? orderId}`, "success");
     } catch (err) {
-      setFetchOp({ loading: false, order: null, error: errText(err, "Failed to fetch order") });
-      showToast("Failed to fetch order", "error");
+      const classified = classifyError(err);
+      setFetchOp({ loading: false, order: null, error: classified });
+      showToast(classified.title, "error");
     }
   };
 
@@ -180,7 +208,7 @@ export function OrderOpsProvider({ children }) {
         duplicateOp, runDuplicateBatch,
         customOp,    runCustomBatch,
         fetchOp,     runFetch,
-        cancelOp, clearOp,
+        cancelOp, clearError,
       }}
     >
       {children}

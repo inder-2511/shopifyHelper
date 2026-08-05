@@ -3,10 +3,11 @@ import { Hash, Loader2, XCircle, Copy } from "lucide-react";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
 import SavedStorePicker from "../common/SavedStorePicker";
+import ErrorBanner from "../common/ErrorBanner";
 
 function DuplicateOrderForm() {
-  const { storeUrl, setStoreUrl, token, setToken, duplicateOp, runDuplicateBatch, cancelOp } = useOrderOps();
-  const { loading, progress, orders } = duplicateOp;
+  const { storeUrl, setStoreUrl, token, setToken, duplicateOp, runDuplicateBatch, cancelOp, clearError } = useOrderOps();
+  const { loading, progress, orders, error, errorContext } = duplicateOp;
 
   const [orderName, setOrderName] = useState("");
   const [count, setCount]         = useState(1);
@@ -92,6 +93,17 @@ function DuplicateOrderForm() {
           </div>
         </form>
       </div>
+
+      {error && (
+        <div className="col-span-3">
+          <ErrorBanner
+            error={error}
+            context={errorContext}
+            onRetry={() => { clearError("duplicate"); handleSubmit({ preventDefault: () => {} }); }}
+            onDismiss={() => clearError("duplicate")}
+          />
+        </div>
+      )}
 
       <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="duplicated" showSource />
     </div>

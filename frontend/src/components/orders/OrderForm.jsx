@@ -4,10 +4,11 @@ import { buildOrderPayload, ADDRESS_PRESETS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
 import SavedStorePicker from "../common/SavedStorePicker";
+import ErrorBanner from "../common/ErrorBanner";
 
 function OrderForm() {
-  const { storeUrl, setStoreUrl, token, setToken, createOp, runCreateBatch, cancelOp } = useOrderOps();
-  const { loading, progress, orders } = createOp;
+  const { storeUrl, setStoreUrl, token, setToken, createOp, runCreateBatch, cancelOp, clearError } = useOrderOps();
+  const { loading, progress, orders, error, errorContext } = createOp;
 
   const [variantId, setVariantId] = useState(() => localStorage.getItem("order_variantId") ?? "");
   const [quantity, setQuantity]   = useState(1);
@@ -119,6 +120,17 @@ function OrderForm() {
           </div>
         </form>
       </div>
+
+      {error && (
+        <div className="col-span-3">
+          <ErrorBanner
+            error={error}
+            context={errorContext}
+            onRetry={() => { clearError("create"); handleSubmit({ preventDefault: () => {} }); }}
+            onDismiss={() => clearError("create")}
+          />
+        </div>
+      )}
 
       <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="created" />
     </div>

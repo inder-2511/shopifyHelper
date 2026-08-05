@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Trash2, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Trash2, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
+import ErrorBanner from "../common/ErrorBanner";
 
 function DeleteProductForm() {
-  const { deleteOp, runDelete } = useProductOps();
+  const { deleteOp, runDelete, clearError } = useProductOps();
   const { loading, result, error } = deleteOp;
   const [productId, setProductId] = useState("");
 
@@ -59,12 +60,11 @@ function DeleteProductForm() {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
-          <XCircle size={15} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
+      <ErrorBanner
+        error={error}
+        onRetry={() => { clearError("delete"); if (productId) runDelete(productId); }}
+        onDismiss={() => clearError("delete")}
+      />
 
       {result && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm p-5">

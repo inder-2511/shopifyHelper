@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { RefreshCcw, ChevronLeft, ChevronRight, Loader2, XCircle } from "lucide-react";
+import { RefreshCcw, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
+import ErrorBanner from "../common/ErrorBanner";
 
 function ListProducts() {
-  const { listOp, runList, deleteOp, runDelete } = useProductOps();
+  const { listOp, runList, deleteOp, runDelete, clearError } = useProductOps();
   const { loading, products, nextPageInfo, previousPageInfo, error } = listOp;
   const [limit, setLimit] = useState(25);
 
@@ -61,12 +62,11 @@ function ListProducts() {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-700 dark:text-red-400">
-          <XCircle size={15} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
+      <ErrorBanner
+        error={error}
+        onRetry={() => { clearError("list"); fetchPage(); }}
+        onDismiss={() => clearError("list")}
+      />
 
       {products.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
