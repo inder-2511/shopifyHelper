@@ -1,43 +1,42 @@
-import { useEffect, useRef, useState } from "react";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, CheckCircle2 } from "lucide-react";
+import SavedStorePicker from "../common/SavedStorePicker";
+import ErrorBanner from "../common/ErrorBanner";
+import { classifyError } from "../../utils/errorClassifier";
+import { useScrollOnTruthy } from "../../hooks/useScrollOnTruthy";
 
 function StoreSetupForm({ title, description, onRun }) {
   const [store, setStore] = useState(() => localStorage.getItem("setup_store") ?? "");
   const [token, setToken] = useState(() => localStorage.getItem("setup_token") ?? "");
   const [loading, setLoading] = useState(false);
-  const [logs, setLogs] = useState([]);
   const [status, setStatus] = useState(null);
-  const logsEndRef = useRef(null);
-  const esRef = useRef(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [logs]);
+  const resultRef = useRef(null);
+  useScrollOnTruthy(resultRef, loading || status || error);
 
-  useEffect(() => () => esRef.current?.close(), []);
+  const setStoreVal = (v) => {
+    setStore(v);
+    localStorage.setItem("setup_store", v);
+  };
+  const setTokenVal = (v) => {
+    setToken(v);
+    localStorage.setItem("setup_token", v);
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoading(true);
-    setLogs([]);
     setStatus(null);
-
-    const es = new EventSource("http://localhost:5000/api/stores/stream");
-    esRef.current = es;
-    es.onmessage = (ev) => {
-      const { message } = JSON.parse(ev.data);
-      setLogs((prev) => [...prev, message]);
-    };
-
+    setError(null);
     try {
       await onRun(store, token);
       setStatus("success");
-    } catch {
+    } catch (err) {
       setStatus("error");
+      setError(classifyError(err));
     } finally {
       setLoading(false);
-      es.close();
-      esRef.current = null;
     }
   };
 
@@ -52,13 +51,15 @@ function StoreSetupForm({ title, description, onRun }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreVal(u); setTokenVal(t); }} />
+
           <div>
             <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Store URL</label>
             <input
               type="text"
               placeholder="your-store.myshopify.com"
               value={store}
-              onChange={(e) => { setStore(e.target.value); localStorage.setItem("setup_store", e.target.value); }}
+              onChange={(e) => setStoreVal(e.target.value)}
               disabled={loading}
               className={inputCls}
               required
@@ -68,10 +69,10 @@ function StoreSetupForm({ title, description, onRun }) {
           <div>
             <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Access Token</label>
             <input
-              type="text"
+              type="password"
               placeholder="shpat_..."
               value={token}
-              onChange={(e) => { setToken(e.target.value); localStorage.setItem("setup_token", e.target.value); }}
+              onChange={(e) => setTokenVal(e.target.value)}
               disabled={loading}
               className={inputCls}
               required
@@ -95,45 +96,17 @@ function StoreSetupForm({ title, description, onRun }) {
         </form>
       </div>
 
-      {(loading || logs.length > 0) && (
-        <div className="col-span-3 bg-[#0B1120] border border-slate-800 overflow-hidden rounded-2xl">
-          <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-white">Live Logs</h3>
-              <p className="text-slate-400 mt-0.5 text-xs">Real-time progress</p>
-            </div>
-            <div className="flex items-center gap-2 text-sm font-medium">
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="btn-spinner text-purple-400" />
-                  <span className="text-purple-400 text-xs">Running...</span>
-                </>
-              ) : status === "success" ? (
-                <>
-                  <CheckCircle2 size={16} className="text-emerald-400" />
-                  <span className="text-emerald-400 text-xs">Done</span>
-                </>
-              ) : (
-                <>
-                  <XCircle size={16} className="text-red-400" />
-                  <span className="text-red-400 text-xs">Failed</span>
-                </>
-              )}
-            </div>
-          </div>
-          <div style={{ backgroundColor: "#0B1120", padding: "1.5rem", maxHeight: "18rem", overflowY: "auto" }}>
-            <pre style={{ fontSize: "0.8rem", lineHeight: "1.8rem", whiteSpace: "pre-wrap", wordBreak: "break-all", fontFamily: "monospace", margin: 0 }}>
-              {logs.map((line, i) => (
-                <span key={i} style={{ color: line.startsWith("[ERROR]") ? "#f87171" : "#4ade80", display: "block" }}>{line}</span>
-              ))}
-              <span ref={logsEndRef} />
-            </pre>
-          </div>
+      <div ref={resultRef} className="col-span-3 scroll-mt-6" />
+
+      {loading && (
+        <div className="col-span-3 flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl px-4 py-3 text-sm text-purple-700 dark:text-purple-300">
+          <Loader2 size={15} className="animate-spin" />
+          Running <strong className="mx-1">{title}</strong>… may take up to a minute depending on the store.
         </div>
       )}
 
-      {status === "success" && (
-        <div className="col-span-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-3xl p-5 flex items-center gap-4">
+      {status === "success" && !error && (
+        <div className="col-span-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 flex items-center gap-4">
           <CheckCircle2 className="text-emerald-500 shrink-0" size={24} />
           <div>
             <p className="font-semibold text-emerald-800 dark:text-emerald-300 text-sm">{title} completed successfully</p>
@@ -142,13 +115,13 @@ function StoreSetupForm({ title, description, onRun }) {
         </div>
       )}
 
-      {status === "error" && (
-        <div className="col-span-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-3xl p-5 flex items-center gap-4">
-          <XCircle className="text-red-500 shrink-0" size={24} />
-          <div>
-            <p className="font-semibold text-red-800 dark:text-red-300 text-sm">Operation failed</p>
-            <p className="text-red-600 dark:text-red-500 text-xs mt-0.5">Check the logs above for details.</p>
-          </div>
+      {error && (
+        <div className="col-span-3">
+          <ErrorBanner
+            error={error}
+            onRetry={() => { setError(null); handleSubmit(); }}
+            onDismiss={() => setError(null)}
+          />
         </div>
       )}
     </div>

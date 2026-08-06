@@ -7,7 +7,6 @@ import {
   ChevronRight,
   ChevronDown,
   Wrench,
-  PlusCircle,
 } from "lucide-react";
 
 import { Link, useLocation } from "react-router-dom";
@@ -167,17 +166,6 @@ function Sidebar() {
             onToggle={() => setProductsOpen((p) => !p)}
             location={location}
           />
-
-          {/* Add Store — guided manual create (always visible) */}
-          <Link
-            to="/add-store"
-            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
-              location.pathname === "/add-store" ? "bg-gradient-to-r from-purple-600 to-purple-500" : "hover:bg-white/10"
-            }`}
-          >
-            <PlusCircle size={20} />
-            <span className="text-lg">Add Store</span>
-          </Link>
 
           {/* Create Store — automated via Playwright (local only) */}
           {!HIDE_LOCAL_FEATURES && (
