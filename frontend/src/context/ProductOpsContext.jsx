@@ -128,6 +128,14 @@ export function ProductOpsProvider({ children }) {
     if (opKey === "list") setListOp((prev) => ({ ...prev, error: null }));
   };
 
+  const removeProductsFromList = (ids) => {
+    const idSet = new Set(ids.map(String));
+    setListOp((prev) => ({
+      ...prev,
+      products: prev.products.filter((p) => !idSet.has(String(p.id))),
+    }));
+  };
+
   return (
     <ProductOpsContext.Provider
       value={{
@@ -138,6 +146,7 @@ export function ProductOpsProvider({ children }) {
         fetchOp,     runFetch,
         listOp,      runList,
         clearError,
+        removeProductsFromList,
       }}
     >
       {children}
