@@ -1,11 +1,9 @@
 import express from "express";
 import { setupStoreShipping } from "../controllers/shippingController.js";
-import { localOnly } from "../middleware/localOnly.js";
 
 const router = express.Router();
 
-router.use(localOnly);
-
+// REST/GraphQL-based — safe to run on the hosted backend.
 router.post("/setup", setupStoreShipping);
 
 export default router;

@@ -56,6 +56,13 @@ const quickActionsAll = [
     iconBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
   },
   {
+    label: "Add Store",
+    description: "Connect a Shopify dev store to this app",
+    path: "/add-store",
+    icon: Store,
+    iconBg: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400",
+  },
+  {
     label: "Create Store",
     description: "Spin up a dev store automatically",
     path: "/create-store",
@@ -69,7 +76,6 @@ const quickActionsAll = [
     path: "/store-setup/markets",
     icon: Globe,
     iconBg: "bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400",
-    localOnly: true,
   },
   {
     label: "Setup Shipping",
@@ -77,7 +83,6 @@ const quickActionsAll = [
     path: "/store-setup/shipping",
     icon: Truck,
     iconBg: "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400",
-    localOnly: true,
   },
   {
     label: "Import Products",
@@ -85,7 +90,6 @@ const quickActionsAll = [
     path: "/store-setup/products",
     icon: Package,
     iconBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
-    localOnly: true,
   },
   {
     label: "Activate Payment",

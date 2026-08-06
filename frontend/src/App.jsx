@@ -12,6 +12,7 @@ import DeleteProductPage from "./pages/products/DeleteProductPage";
 import FetchProductPage from "./pages/products/FetchProductPage";
 import Settings from "./pages/Settings";
 import CreateStore from "./pages/CreateStore";
+import AddStorePage from "./pages/AddStorePage";
 import SetupMarketsPage from "./pages/store-setup/SetupMarketsPage";
 import SetupShippingPage from "./pages/store-setup/SetupShippingPage";
 import ImportProductsPage from "./pages/store-setup/ImportProductsPage";
@@ -49,6 +50,8 @@ function App() {
         <Route path="/products/fetch" element={<FetchProductPage />} />
 
         <Route path="/settings" element={<Settings />} />
+
+        <Route path="/add-store" element={<AddStorePage />} />
 
         <Route path="/create-store" element={<CreateStore />} />
 

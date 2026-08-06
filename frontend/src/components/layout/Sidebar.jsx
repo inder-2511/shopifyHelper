@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ChevronDown,
   Wrench,
+  PlusCircle,
 } from "lucide-react";
 
 import { Link, useLocation } from "react-router-dom";
@@ -27,12 +28,16 @@ const productItems = [
   { name: "Fetch Product",     path: "/products/fetch" },
 ];
 
-const storeSetupItems = [
+const HIDE_LOCAL_FEATURES = import.meta.env.VITE_HIDE_LOCAL_FEATURES === "true";
+
+const storeSetupItemsAll = [
   { name: "Setup Markets",    path: "/store-setup/markets" },
   { name: "Setup Shipping",   path: "/store-setup/shipping" },
   { name: "Import Products",  path: "/store-setup/products" },
-  { name: "Activate Payment", path: "/store-setup/payment" },
+  { name: "Activate Payment", path: "/store-setup/payment", localOnly: true },
 ];
+
+const storeSetupItems = storeSetupItemsAll.filter((i) => !(HIDE_LOCAL_FEATURES && i.localOnly));
 
 function LogoMark({ size = 44 }) {
   return (
@@ -95,8 +100,6 @@ function CollapsibleMenu({ icon, label, items, isActive, open, onToggle, locatio
     </div>
   );
 }
-
-const HIDE_LOCAL_FEATURES = import.meta.env.VITE_HIDE_LOCAL_FEATURES === "true";
 
 function Sidebar() {
   const location = useLocation();
@@ -165,7 +168,18 @@ function Sidebar() {
             location={location}
           />
 
-          {/* Create Store — local only (Playwright) */}
+          {/* Add Store — guided manual create (always visible) */}
+          <Link
+            to="/add-store"
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
+              location.pathname === "/add-store" ? "bg-gradient-to-r from-purple-600 to-purple-500" : "hover:bg-white/10"
+            }`}
+          >
+            <PlusCircle size={20} />
+            <span className="text-lg">Add Store</span>
+          </Link>
+
+          {/* Create Store — automated via Playwright (local only) */}
           {!HIDE_LOCAL_FEATURES && (
             <Link
               to="/create-store"
@@ -178,8 +192,9 @@ function Sidebar() {
             </Link>
           )}
 
-          {/* Store Setup collapsible — local only (Playwright) */}
-          {!HIDE_LOCAL_FEATURES && (
+          {/* Store Setup collapsible — Markets/Shipping/Import use REST API and work in prod;
+              Activate Payment is Playwright-only and filtered out when hidden. */}
+          {storeSetupItems.length > 0 && (
             <CollapsibleMenu
               icon={<Wrench size={20} />}
               label="Store Setup"

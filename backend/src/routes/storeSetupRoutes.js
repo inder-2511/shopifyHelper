@@ -5,11 +5,12 @@ import { localOnly } from "../middleware/localOnly.js";
 
 const router = express.Router();
 
-router.use(localOnly);
-
+// REST/GraphQL-based — safe to run on the hosted backend.
 router.post("/markets", runSetupMarkets);
 router.post("/shipping", setupStoreShipping);
 router.post("/products", runImportProducts);
-router.post("/payment", runActivatePayment);
+
+// Playwright-based — only runs when DISABLE_LOCAL_FEATURES is unset.
+router.post("/payment", localOnly, runActivatePayment);
 
 export default router;
