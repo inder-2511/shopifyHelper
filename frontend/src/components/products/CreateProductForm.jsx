@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, Loader2, CheckCircle2 } from "lucide-react";
 import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
 import ErrorBanner from "../common/ErrorBanner";
+import { useScrollOnTruthy } from "../../hooks/useScrollOnTruthy";
 
 function CreateProductForm() {
   const { createOp, runCreate, clearError } = useProductOps();
@@ -14,6 +15,9 @@ function CreateProductForm() {
   const [price, setPrice] = useState("10.00");
   const [inventory, setInventory] = useState(100);
   const [status, setStatus] = useState("active");
+
+  const resultRef = useRef(null);
+  useScrollOnTruthy(resultRef, result || error);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -131,6 +135,8 @@ function CreateProductForm() {
           </button>
         </form>
       </div>
+
+      <div ref={resultRef} className="scroll-mt-6" />
 
       <ErrorBanner
         error={error}

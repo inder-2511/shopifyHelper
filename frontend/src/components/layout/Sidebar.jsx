@@ -34,6 +34,29 @@ const storeSetupItems = [
   { name: "Activate Payment", path: "/store-setup/payment" },
 ];
 
+function LogoMark({ size = 44 }) {
+  return (
+    <div
+      className="rounded-xl overflow-hidden shrink-0"
+      style={{ width: size, height: size }}
+    >
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+        <defs>
+          <linearGradient id="sidebar-logo-bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#a855f7" />
+            <stop offset="1" stopColor="#6366f1" />
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" fill="url(#sidebar-logo-bg)" />
+        <path
+          d="M22 26v-2.5a10 10 0 0 1 20 0V26h4.6l-2 22.4a3.5 3.5 0 0 1-3.5 3.1H20.9a3.5 3.5 0 0 1-3.5-3.1L15.4 26H22zm4 0h12v-2.5a6 6 0 0 0-12 0V26zm-1 6.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm14 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"
+          fill="white"
+        />
+      </svg>
+    </div>
+  );
+}
+
 function CollapsibleMenu({ icon, label, items, isActive, open, onToggle, location }) {
   return (
     <div>
@@ -97,17 +120,18 @@ function Sidebar() {
   ];
 
   return (
-    <div className="w-[280px] min-h-screen bg-[#060B27] text-white flex flex-col justify-between">
-      <div>
-        <div className="px-8 py-8">
-          <h1 className="text-4xl font-bold leading-tight">
+    <div className="w-[280px] h-screen sticky top-0 self-start bg-[#060B27] text-white flex flex-col">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="px-6 py-6 flex items-center gap-3">
+          <LogoMark size={44} />
+          <h1 className="text-2xl font-bold leading-tight">
             Shopify
             <br />
-            <span className="text-purple-500">Helper</span>
+            <span className="text-purple-400">Helper</span>
           </h1>
         </div>
 
-        <nav className="px-4 flex flex-col gap-3">
+        <nav className="px-4 pb-4 flex flex-col gap-3">
           {/* Dashboard */}
           <Link
             to="/"
@@ -183,7 +207,7 @@ function Sidebar() {
         </nav>
       </div>
 
-      <div className="p-5">
+      <div className="shrink-0 p-5">
         <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
           <h3 className="font-semibold">version 1.0.26</h3>
           <p className="text-sm text-gray-400">by Inderbir Singh</p>

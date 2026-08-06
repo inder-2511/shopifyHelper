@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useScrollOnTruthy } from "../../hooks/useScrollOnTruthy";
 
 const PAGE_SIZE = 20;
 
@@ -19,8 +20,14 @@ function OrderResultsPanel({ progress, loading, orders, verb = "created", showSo
   const safePage = Math.min(page, totalPages);
   const pageOrders = orders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  const scrollRef = useRef(null);
+  // Scroll when a batch starts (progress appears) OR when the first order lands.
+  useScrollOnTruthy(scrollRef, !!progress || orders.length > 0);
+
   return (
     <>
+      <div ref={scrollRef} className="col-span-3 scroll-mt-6" />
+
       {/* Progress bar */}
       {loading && progress && (
         <div className="col-span-3 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-4">

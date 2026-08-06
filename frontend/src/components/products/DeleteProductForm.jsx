@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Trash2, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useProductOps } from "../../context/ProductOpsContext";
 import StoreCredentialsInputs, { productInputCls } from "./StoreCredentialsInputs";
 import ErrorBanner from "../common/ErrorBanner";
+import { useScrollOnTruthy } from "../../hooks/useScrollOnTruthy";
 
 function DeleteProductForm() {
   const { deleteOp, runDelete, clearError } = useProductOps();
   const { loading, result, error } = deleteOp;
   const [productId, setProductId] = useState("");
+
+  const resultRef = useRef(null);
+  useScrollOnTruthy(resultRef, result || error || loading);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -52,6 +56,8 @@ function DeleteProductForm() {
           </div>
         </form>
       </div>
+
+      <div ref={resultRef} className="scroll-mt-6" />
 
       {loading && (
         <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl px-4 py-3 text-sm text-purple-700 dark:text-purple-300">
