@@ -20,6 +20,7 @@ import { ActivityProvider } from "./context/ActivityContext";
 import { StoreCreationProvider } from "./context/StoreCreationContext";
 import { ProductOpsProvider } from "./context/ProductOpsContext";
 import { OrderOpsProvider } from "./context/OrderOpsContext";
+import { OrderSettingsProvider } from "./context/OrderSettingsContext";
 import { SavedStoresProvider } from "./context/SavedStoresContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -31,6 +32,7 @@ function App() {
     <ActivityProvider>
     <SavedStoresProvider>
     <StoreCreationProvider>
+    <OrderSettingsProvider>
     <OrderOpsProvider>
     <ProductOpsProvider>
     <BrowserRouter>
@@ -63,6 +65,7 @@ function App() {
     </BrowserRouter>
     </ProductOpsProvider>
     </OrderOpsProvider>
+    </OrderSettingsProvider>
     </StoreCreationProvider>
     </SavedStoresProvider>
     </ActivityProvider>

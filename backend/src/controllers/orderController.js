@@ -2,8 +2,11 @@ import { createOrderService, duplicateOrderService, fetchOrderService } from "..
 
 export const createOrder = async (req, res) => {
   try {
-    const { storeUrl, token, ...orderData } = req.body;
-    const result = await createOrderService(orderData, storeUrl, token);
+    // viaDraftOrder is ours, not Shopify's — keep it out of the order payload.
+    const { storeUrl, token, viaDraftOrder, ...orderData } = req.body;
+    const result = await createOrderService(orderData, storeUrl, token, {
+      viaDraftOrder: Boolean(viaDraftOrder),
+    });
     res.json(result);
   } catch (error) {
     const shopifyError = error.response?.data;
@@ -30,8 +33,10 @@ export const fetchOrder = async (req, res) => {
 
 export const duplicateOrder = async (req, res) => {
   try {
-    const { storeUrl, token, orderName } = req.body;
-    const result = await duplicateOrderService(orderName, storeUrl, token);
+    const { storeUrl, token, orderName, viaDraftOrder } = req.body;
+    const result = await duplicateOrderService(orderName, storeUrl, token, {
+      viaDraftOrder: Boolean(viaDraftOrder),
+    });
     res.json(result);
   } catch (error) {
     const shopifyError = error.response?.data;

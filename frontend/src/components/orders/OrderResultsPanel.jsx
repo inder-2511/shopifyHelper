@@ -14,7 +14,7 @@ const statusColor = (s) => {
  * Shared progress + orders table used by Create, Duplicate, and Custom order forms.
  * Reads batch state (progress + orders) from parent.
  */
-function OrderResultsPanel({ progress, loading, orders, verb = "created", showSource = false }) {
+function OrderResultsPanel({ progress, loading, orders, verb = "created", showSource = false, droppedFields = [] }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -41,6 +41,18 @@ function OrderResultsPanel({ progress, loading, orders, verb = "created", showSo
               style={{ width: `${(progress.done / progress.total) * 100}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Fields the draft-order path couldn't carry */}
+      {droppedFields.length > 0 && (
+        <div className="col-span-3 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-5 py-3">
+          <p className="text-xs text-amber-800 dark:text-amber-300">
+            <span className="font-semibold">Ignored on the draft-order path:</span>{" "}
+            <span className="font-mono">{droppedFields.join(", ")}</span> — the Draft Order API
+            doesn't accept {droppedFields.length === 1 ? "it" : "them"}. Turn off
+            "Create admin-editable orders" in Settings to send {droppedFields.length === 1 ? "it" : "them"} again.
+          </p>
         </div>
       )}
 
@@ -78,7 +90,17 @@ function OrderResultsPanel({ progress, loading, orders, verb = "created", showSo
                   return (
                     <tr key={order.id} className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                       <td className="px-6 py-3 text-xs text-gray-400 dark:text-slate-500">{orders.length - globalIdx}</td>
-                      <td className="px-6 py-3 font-semibold text-gray-800 dark:text-slate-100">{order.name}</td>
+                      <td className="px-6 py-3 font-semibold text-gray-800 dark:text-slate-100">
+                        {order.name}
+                        {order.editable && (
+                          <span
+                            title="Created via a draft order — editable in the Shopify admin"
+                            className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold align-middle bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                          >
+                            editable
+                          </span>
+                        )}
+                      </td>
                       {showSource && (
                         <td className="px-6 py-3 text-gray-500 dark:text-slate-400 text-xs">{order.source ?? "—"}</td>
                       )}

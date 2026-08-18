@@ -3,6 +3,7 @@ import { Hash, Loader2, XCircle, Plus, Trash2 } from "lucide-react";
 import { buildOrderPayload, ADDRESS_PRESETS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
+import OrderModeNotice from "./OrderModeNotice";
 import SavedStorePicker from "../common/SavedStorePicker";
 import ErrorBanner from "../common/ErrorBanner";
 import VariantPicker from "./VariantPicker";
@@ -31,7 +32,7 @@ const initialRows = () => {
 
 function OrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, createOp, runCreateBatch, cancelOp, clearError } = useOrderOps();
-  const { loading, progress, orders, error, errorContext } = createOp;
+  const { loading, progress, orders, error, errorContext, droppedFields } = createOp;
 
   const [items, setItems] = useState(initialRows);
   const [addressPreset, setAddressPreset] = useState("US");
@@ -71,6 +72,8 @@ function OrderForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreUrl(u); setToken(t); }} />
+
+          <OrderModeNotice />
 
           <div>
             <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Store URL</label>
@@ -219,7 +222,7 @@ function OrderForm() {
         </div>
       )}
 
-      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="created" />
+      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="created" droppedFields={droppedFields} />
     </div>
   );
 }

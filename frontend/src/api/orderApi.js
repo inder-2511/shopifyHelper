@@ -5,8 +5,8 @@ export const createOrderApi = async (orderData) => {
   return response.data;
 };
 
-export const duplicateOrderApi = async (storeUrl, token, orderName) => {
-  const response = await api.post("api/orders/duplicate", { storeUrl, token, orderName });
+export const duplicateOrderApi = async (storeUrl, token, orderName, viaDraftOrder = false) => {
+  const response = await api.post("api/orders/duplicate", { storeUrl, token, orderName, viaDraftOrder });
   return response.data;
 };
 

@@ -6,6 +6,7 @@ import {
 } from "../api/orderApi";
 import { useActivity } from "./ActivityContext";
 import { useToast } from "./ToastContext";
+import { useOrderSettings } from "./OrderSettingsContext";
 import { classifyError } from "../utils/errorClassifier";
 
 const OrderOpsContext = createContext(null);
@@ -21,6 +22,7 @@ const idleBatch = {
   error: null,          // classified error object
   errorContext: "",     // e.g. "on order 3 of 10"
   cancelled: false,
+  droppedFields: [],    // order-only fields the draft-order path couldn't carry
 };
 
 const idleFetch = { loading: false, order: null, error: null };
@@ -28,6 +30,7 @@ const idleFetch = { loading: false, order: null, error: null };
 export function OrderOpsProvider({ children }) {
   const { addActivity } = useActivity();
   const { showToast } = useToast();
+  const { editableOrders } = useOrderSettings();
 
   const [storeUrl, setStoreUrlState] = useState(
     () => localStorage.getItem("order_storeUrl") ?? ""
@@ -117,12 +120,14 @@ export function OrderOpsProvider({ children }) {
           total: order.total_price,
           currency: order.currency,
           createdAt: new Date(order.created_at ?? Date.now()).toLocaleTimeString(),
+          editable: Boolean(result.viaDraftOrder),
         };
         done += 1;
         setOp((prev) => ({
           ...prev,
           orders: [entry, ...prev.orders],
           progress: { done, total: count },
+          droppedFields: result.droppedFields?.length ? result.droppedFields : prev.droppedFields,
         }));
         if (activityLabel) addActivity("order", activityLabel(order, result));
       }
@@ -153,7 +158,7 @@ export function OrderOpsProvider({ children }) {
     runBatch(
       "create",
       count,
-      () => createOrderApi({ ...payload, storeUrl, token }),
+      () => createOrderApi({ ...payload, storeUrl, token, viaDraftOrder: editableOrders }),
       (order) => `${order.name} on ${storeUrl}`,
       "created"
     );
@@ -162,7 +167,7 @@ export function OrderOpsProvider({ children }) {
     runBatch(
       "duplicate",
       count,
-      () => duplicateOrderApi(storeUrl, token, orderName),
+      () => duplicateOrderApi(storeUrl, token, orderName, editableOrders),
       (order, result) => `Duplicated ${result.source?.name ?? orderName} → ${order.name} on ${storeUrl}`,
       "duplicated"
     );
@@ -171,7 +176,7 @@ export function OrderOpsProvider({ children }) {
     runBatch(
       "custom",
       count,
-      () => createOrderApi({ ...payload, storeUrl, token }),
+      () => createOrderApi({ ...payload, storeUrl, token, viaDraftOrder: editableOrders }),
       (order) => `Custom ${order.name} on ${storeUrl}`,
       "created"
     );

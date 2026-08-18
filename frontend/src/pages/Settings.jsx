@@ -1,6 +1,7 @@
 import MainLayout from "../components/layout/MainLayout";
 import SavedStoresSection from "../components/settings/SavedStoresSection";
 import ThemeSection from "../components/settings/ThemeSection";
+import OrderSettingsSection from "../components/settings/OrderSettingsSection";
 import BackendInfoSection from "../components/settings/BackendInfoSection";
 import DangerZoneSection from "../components/settings/DangerZoneSection";
 
@@ -16,6 +17,7 @@ function Settings() {
 
       <div className="space-y-5">
         <SavedStoresSection />
+        <OrderSettingsSection />
         <ThemeSection />
         <BackendInfoSection />
         <DangerZoneSection />

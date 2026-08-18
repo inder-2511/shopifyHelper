@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Hash, Loader2, XCircle, Copy } from "lucide-react";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
+import OrderModeNotice from "./OrderModeNotice";
 import SavedStorePicker from "../common/SavedStorePicker";
 import ErrorBanner from "../common/ErrorBanner";
 
 function DuplicateOrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, duplicateOp, runDuplicateBatch, cancelOp, clearError } = useOrderOps();
-  const { loading, progress, orders, error, errorContext } = duplicateOp;
+  const { loading, progress, orders, error, errorContext, droppedFields } = duplicateOp;
 
   const [orderName, setOrderName] = useState("");
   const [count, setCount]         = useState(1);
@@ -29,6 +30,8 @@ function DuplicateOrderForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreUrl(u); setToken(t); }} />
+
+          <OrderModeNotice />
 
           <div>
             <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Store URL</label>
@@ -105,7 +108,7 @@ function DuplicateOrderForm() {
         </div>
       )}
 
-      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="duplicated" showSource />
+      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="duplicated" showSource droppedFields={droppedFields} />
     </div>
   );
 }

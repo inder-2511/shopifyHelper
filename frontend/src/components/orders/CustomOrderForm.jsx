@@ -4,6 +4,7 @@ import { faker } from "@faker-js/faker";
 import { ADDRESS_PRESETS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
+import OrderModeNotice from "./OrderModeNotice";
 import SavedStorePicker from "../common/SavedStorePicker";
 import ErrorBanner from "../common/ErrorBanner";
 import VariantPicker from "./VariantPicker";
@@ -89,7 +90,7 @@ const defaultOf  = (key) => ALL_FIELDS.find((f) => f.key === key)?.default ?? ""
 
 function CustomOrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, customOp, runCustomBatch, cancelOp, clearError } = useOrderOps();
-  const { loading, progress, orders, error, errorContext } = customOp;
+  const { loading, progress, orders, error, errorContext, droppedFields } = customOp;
 
   const [addressPreset, setAddressPreset] = useState("US");
   const [orderCount, setOrderCount]       = useState(1);
@@ -212,6 +213,8 @@ function CustomOrderForm() {
 
         <form id="custom-order-form" onSubmit={handleSubmit} className="space-y-4">
           <SavedStorePicker onPick={({ storeUrl: u, token: t }) => { setStoreUrl(u); setToken(t); }} />
+
+          <OrderModeNotice />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -340,7 +343,7 @@ function CustomOrderForm() {
         </div>
       )}
 
-      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="created" />
+      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="created" droppedFields={droppedFields} />
     </div>
   );
 }
