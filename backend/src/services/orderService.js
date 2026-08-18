@@ -35,20 +35,62 @@ const toDraftOrderPayload = (orderData) => {
   return { draft_order, droppedFields };
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Shopify calculates draft order shipping/taxes asynchronously, so a freshly
+// created draft isn't immediately completable. It signals this two ways: a 202
+// with location + retry-after headers to poll, or a 422 "has not finished
+// calculating" if we complete too early. Both just mean "wait".
+const DRAFT_POLL_ATTEMPTS = 8;
+const DRAFT_COMPLETE_ATTEMPTS = 6;
+
+const isStillCalculating = (error) =>
+  error.response?.status === 422 &&
+  /not finished calculating/i.test(JSON.stringify(error.response?.data ?? ""));
+
+// Follow the 202 + location/retry-after polling contract until the draft settles.
+const awaitDraftReady = async (shopifyApi, response) => {
+  let current = response;
+  for (let attempt = 0; current.status === 202 && attempt < DRAFT_POLL_ATTEMPTS; attempt++) {
+    const location = current.headers?.location ?? current.headers?.Location;
+    if (!location) break;
+    const retryAfter = Number(current.headers?.["retry-after"]) || 1;
+    await sleep(retryAfter * 1000);
+    current = await shopifyApi.get(location);
+  }
+  return current;
+};
+
+// payment_pending=false marks the resulting order as paid, matching the
+// financial_status: "paid" the direct path sends.
+const completeDraftOrder = async (shopifyApi, draftId) => {
+  let delay = 700;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await shopifyApi.put(
+        `/draft_orders/${draftId}/complete.json?payment_pending=false`
+      );
+    } catch (error) {
+      if (attempt >= DRAFT_COMPLETE_ATTEMPTS || !isStillCalculating(error)) throw error;
+      await sleep(delay);
+      delay = Math.min(delay * 2, 5_000);
+    }
+  }
+};
+
 // Create → complete a draft order, then read back the resulting order so callers
 // get the same shape as a plain POST /orders.json.
 const createViaDraftOrder = async (shopifyApi, orderData) => {
   const { draft_order, droppedFields } = toDraftOrderPayload(orderData);
 
-  const created = await shopifyApi.post("/draft_orders.json", { draft_order });
-  const draftId = created.data.draft_order?.id;
+  const created = await awaitDraftReady(
+    shopifyApi,
+    await shopifyApi.post("/draft_orders.json", { draft_order })
+  );
+  const draftId = created.data?.draft_order?.id;
   if (!draftId) throw new Error("Draft order was created but returned no id");
 
-  // payment_pending=false marks the resulting order as paid, matching the
-  // financial_status: "paid" the direct path sends.
-  const completed = await shopifyApi.put(
-    `/draft_orders/${draftId}/complete.json?payment_pending=false`
-  );
+  const completed = await completeDraftOrder(shopifyApi, draftId);
   const orderId = completed.data.draft_order?.order_id;
   if (!orderId) throw new Error(`Draft order ${draftId} completed but produced no order`);
 
