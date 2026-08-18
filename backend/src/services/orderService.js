@@ -48,15 +48,49 @@ const isStillCalculating = (error) =>
   error.response?.status === 422 &&
   /not finished calculating/i.test(JSON.stringify(error.response?.data ?? ""));
 
-// Follow the 202 + location/retry-after polling contract until the draft settles.
+// A Cloudflare bot-challenge page (or any admin web page) instead of JSON means
+// we left the Admin API. Say so plainly — a bare 403 from Cloudflare otherwise
+// reads as a permissions problem.
+const assertJsonResponse = (response, what) => {
+  const looksLikeHtml =
+    typeof response.data === "string" && /^\s*<(!doctype|html)/i.test(response.data);
+  if (looksLikeHtml) {
+    throw new Error(
+      `${what}: got an HTML page instead of JSON — the request left the Admin API ` +
+      `(usually a Cloudflare challenge on admin.shopify.com). Store URL should be the ` +
+      `*.myshopify.com domain.`
+    );
+  }
+  return response;
+};
+
+const draftIdFrom = (response) => {
+  const fromBody = response.data?.draft_order?.id;
+  if (fromBody) return fromBody;
+  // Fall back to the id embedded in the location header path.
+  const location = response.headers?.location ?? response.headers?.Location ?? "";
+  const [, id] = /draft_orders\/(\d+)/.exec(location) ?? [];
+  return id ?? null;
+};
+
+// Honour the 202 + retry-after polling contract until the draft settles.
+//
+// We deliberately do NOT fetch the location header's URL as given: on some stores
+// it points at the admin web UI (admin.shopify.com/store/<handle>/draft_orders/<id>),
+// which answers with a Cloudflare bot challenge rather than JSON. We take only the
+// draft id from it and poll our own Admin API path instead.
 const awaitDraftReady = async (shopifyApi, response) => {
-  let current = response;
+  let current = assertJsonResponse(response, "Creating the draft order");
+
   for (let attempt = 0; current.status === 202 && attempt < DRAFT_POLL_ATTEMPTS; attempt++) {
-    const location = current.headers?.location ?? current.headers?.Location;
-    if (!location) break;
+    const draftId = draftIdFrom(current);
+    if (!draftId) break;
     const retryAfter = Number(current.headers?.["retry-after"]) || 1;
     await sleep(retryAfter * 1000);
-    current = await shopifyApi.get(location);
+    current = assertJsonResponse(
+      await shopifyApi.get(`/draft_orders/${draftId}.json`),
+      `Polling draft order ${draftId}`
+    );
   }
   return current;
 };
@@ -87,7 +121,7 @@ const createViaDraftOrder = async (shopifyApi, orderData) => {
     shopifyApi,
     await shopifyApi.post("/draft_orders.json", { draft_order })
   );
-  const draftId = created.data?.draft_order?.id;
+  const draftId = draftIdFrom(created);
   if (!draftId) throw new Error("Draft order was created but returned no id");
 
   const completed = await completeDraftOrder(shopifyApi, draftId);
