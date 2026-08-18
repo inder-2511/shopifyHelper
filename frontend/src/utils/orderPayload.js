@@ -80,6 +80,7 @@ export const buildOrderPayload = ({
   price,
   productId,
   variantId,
+  lineItems,
   addressPreset = "US",
   firstName = faker.person.firstName(),
   lastName = faker.person.lastName(),
@@ -102,7 +103,21 @@ export const buildOrderPayload = ({
     address1, address2, city, province, country, zip, currency, phones,
   } = preset;
   const phone = faker.helpers.arrayElement(phones);
-  const shippingPrice = price;
+
+  // Accept either a list of products (multi-product orders) or the legacy
+  // single variantId/quantity/price triple.
+  const rows = Array.isArray(lineItems) && lineItems.length
+    ? lineItems
+    : [{ variantId, quantity, price }];
+
+  const line_items = rows
+    .filter((row) => String(row.variantId ?? "").trim() !== "")
+    .map((row) => ({
+      variant_id: Number(row.variantId),
+      quantity: Number(row.quantity),
+      price: Number(row.price),
+    }));
+
   return {
     email,
     phone,
@@ -138,12 +153,6 @@ export const buildOrderPayload = ({
       phone,
     },
 
-    line_items: [
-      {
-        variant_id: Number(variantId),
-        quantity: Number(quantity),
-        price: Number(price),
-      },
-    ],
+    line_items,
   };
 };

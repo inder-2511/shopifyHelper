@@ -5,6 +5,9 @@ import { classifyError } from "../../utils/errorClassifier";
 
 // Module-level cache so switching between forms doesn't re-fetch.
 const catalogCache = new Map(); // key: `${storeUrl}::${token}` → { variants, ts }
+// In-flight requests, so several pickers mounting at once (multi-product orders)
+// share one catalog fetch instead of firing N identical ones.
+const inFlight = new Map();     // key: `${storeUrl}::${token}` → Promise<variants>
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 async function fetchAllVariants(storeUrl, token) {
@@ -53,9 +56,18 @@ function VariantPicker({ storeUrl, token, value, onChange, disabled }) {
     setLoading(true);
     setError(null);
     try {
-      const list = await fetchAllVariants(storeUrl, token);
-      catalogCache.set(cacheKey, { variants: list, ts: Date.now() });
-      setVariants(list);
+      let pending = force ? null : inFlight.get(cacheKey);
+      if (!pending) {
+        pending = fetchAllVariants(storeUrl, token).then((list) => {
+          catalogCache.set(cacheKey, { variants: list, ts: Date.now() });
+          return list;
+        });
+        inFlight.set(cacheKey, pending);
+        pending.catch(() => {}).finally(() => {
+          if (inFlight.get(cacheKey) === pending) inFlight.delete(cacheKey);
+        });
+      }
+      setVariants(await pending);
     } catch (err) {
       setError(classifyError(err));
     } finally {
