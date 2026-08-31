@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Hash, Loader2, XCircle, Plus, Trash2 } from "lucide-react";
 import { buildOrderPayload, ADDRESS_PRESETS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
+import { useSavedAddresses } from "../../context/SavedAddressesContext";
 import OrderResultsPanel from "./OrderResultsPanel";
 import OrderModeNotice from "./OrderModeNotice";
 import SavedStorePicker from "../common/SavedStorePicker";
@@ -33,10 +34,29 @@ const initialRows = () => {
 function OrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, createOp, runCreateBatch, cancelOp, clearError } = useOrderOps();
   const { loading, progress, orders, error, errorContext, droppedFields } = createOp;
+  const { addresses } = useSavedAddresses();
 
   const [items, setItems] = useState(initialRows);
-  const [addressPreset, setAddressPreset] = useState("US");
+  // "US" / "IN" / ... for built-in presets, or "saved:<id>" for a user-saved address.
+  const [addressChoice, setAddressChoice] = useState("US");
   const [orderCount, setOrderCount]       = useState(1);
+
+  // If the user deletes the saved address that was selected, fall back to US.
+  useEffect(() => {
+    if (addressChoice.startsWith("saved:")) {
+      const id = addressChoice.slice(6);
+      if (!addresses.some((a) => a.id === id)) setAddressChoice("US");
+    }
+  }, [addresses, addressChoice]);
+
+  const resolveAddress = () => {
+    if (addressChoice.startsWith("saved:")) {
+      const id = addressChoice.slice(6);
+      const saved = addresses.find((a) => a.id === id);
+      return saved ? { addressPreset: "US", address: saved } : { addressPreset: "US" };
+    }
+    return { addressPreset: addressChoice };
+  };
 
   useEffect(() => {
     const bare = items.map(({ variantId, quantity, price }) => ({ variantId, quantity, price }));
@@ -56,7 +76,7 @@ function OrderForm() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (incomplete) return;
-    const orderData = buildOrderPayload({ lineItems: items, addressPreset });
+    const orderData = buildOrderPayload({ lineItems: items, ...resolveAddress() });
     runCreateBatch(orderData, orderCount);
   };
 
@@ -163,14 +183,28 @@ function OrderForm() {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Shipping Address</label>
-              <select value={addressPreset} onChange={(e) => setAddressPreset(e.target.value)}
+              <select value={addressChoice} onChange={(e) => setAddressChoice(e.target.value)}
                 className={`${inputCls} cursor-pointer`}>
-                {Object.entries(ADDRESS_PRESETS).map(([key, preset]) => (
-                  <option key={key} value={key}>
-                    {preset.label} — {preset.address1}, {preset.city}, {preset.zip}
-                  </option>
-                ))}
+                <optgroup label="Built-in presets">
+                  {Object.entries(ADDRESS_PRESETS).map(([key, preset]) => (
+                    <option key={key} value={key}>
+                      {preset.label} — {preset.address1}, {preset.city}, {preset.zip}
+                    </option>
+                  ))}
+                </optgroup>
+                {addresses.length > 0 && (
+                  <optgroup label="Saved addresses">
+                    {addresses.map((a) => (
+                      <option key={a.id} value={`saved:${a.id}`}>
+                        {a.name} — {[a.address1, a.city, a.zip].filter(Boolean).join(", ")}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+              <p className="text-[11px] text-gray-500 dark:text-slate-500 mt-1">
+                Add more in <a href="/settings" className="text-purple-600 dark:text-purple-400 hover:underline">Settings</a>.
+              </p>
             </div>
 
             <div className="col-span-2">

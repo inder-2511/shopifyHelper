@@ -82,6 +82,8 @@ export const buildOrderPayload = ({
   variantId,
   lineItems,
   addressPreset = "US",
+  address,          // optional { first_name, last_name, company, address1, ..., phone } — overrides preset
+  currency,         // optional explicit currency; falls back to the preset's currency
   firstName = faker.person.firstName(),
   lastName = faker.person.lastName(),
   email = faker.internet.email(),
@@ -99,10 +101,22 @@ export const buildOrderPayload = ({
   note = "Created from Shopify Helper",
 }) => {
   const preset = ADDRESS_PRESETS[addressPreset] ?? ADDRESS_PRESETS.US;
-  const {
-    address1, address2, city, province, country, zip, currency, phones,
-  } = preset;
-  const phone = faker.helpers.arrayElement(phones);
+
+  // Prefer an explicit saved address; fall back to the preset. Any missing field
+  // on a saved address falls back to the preset's value so the payload always
+  // has a usable country/currency/etc.
+  const src = address ?? {};
+  const address1 = (src.address1 ?? preset.address1) || "";
+  const address2 = (src.address2 ?? preset.address2) || "";
+  const city     = (src.city     ?? preset.city)     || "";
+  const province = (src.province ?? preset.province) || "";
+  const country  = (src.country  ?? preset.country)  || "";
+  const zip      = (src.zip      ?? preset.zip)      || "";
+  const resolvedCurrency = currency ?? preset.currency ?? "USD";
+  const phone    = src.phone || faker.helpers.arrayElement(preset.phones);
+  const resolvedFirst   = src.first_name || firstName;
+  const resolvedLast    = src.last_name  || lastName;
+  const resolvedCompany = src.company    || company;
 
   // Accept either a list of products (multi-product orders) or the legacy
   // single variantId/quantity/price triple.
@@ -118,41 +132,29 @@ export const buildOrderPayload = ({
       price: Number(row.price),
     }));
 
+  const finalAddress = {
+    first_name: resolvedFirst,
+    last_name: resolvedLast,
+    company: resolvedCompany,
+    address1,
+    address2,
+    city,
+    province,
+    country,
+    zip,
+    phone,
+  };
+
   return {
     email,
     phone,
-    currency,
+    currency: resolvedCurrency,
     financial_status: "paid",
     note,
     tags,
     source_name: "shopify-helper",
-
-    billing_address: {
-      first_name: firstName,
-      last_name: lastName,
-      company,
-      address1,
-      address2,
-      city,
-      province,
-      country,
-      zip,
-      phone,
-    },
-
-    shipping_address: {
-      first_name: firstName,
-      last_name: lastName,
-      company,
-      address1,
-      address2,
-      city,
-      province,
-      country,
-      zip,
-      phone,
-    },
-
+    billing_address:  finalAddress,
+    shipping_address: finalAddress,
     line_items,
   };
 };

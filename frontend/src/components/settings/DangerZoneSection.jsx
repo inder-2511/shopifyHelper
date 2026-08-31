@@ -1,11 +1,13 @@
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { useActivity } from "../../context/ActivityContext";
 import { useSavedStores } from "../../context/SavedStoresContext";
+import { useSavedAddresses } from "../../context/SavedAddressesContext";
 import { useToast } from "../../context/ToastContext";
 
 function DangerZoneSection() {
   const { clearActivities } = useActivity();
   const { clearStores } = useSavedStores();
+  const { clearAddresses } = useSavedAddresses();
   const { showToast } = useToast();
 
   const doAndConfirm = (label, effect) => () => {
@@ -37,6 +39,11 @@ function DangerZoneSection() {
           label="Clear saved stores"
           description="Deletes all saved store profiles (name + URL + token)."
           onClick={doAndConfirm("Clear saved stores", clearStores)}
+        />
+        <Row
+          label="Clear saved addresses"
+          description="Deletes all saved shipping/billing addresses."
+          onClick={doAndConfirm("Clear saved addresses", clearAddresses)}
         />
         <Row
           label="Reset all local data"

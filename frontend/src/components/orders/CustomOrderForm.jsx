@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Hash, Loader2, XCircle, Sliders } from "lucide-react";
 import { faker } from "@faker-js/faker";
 import { ADDRESS_PRESETS } from "../../utils/orderPayload";
+import { useSavedAddresses } from "../../context/SavedAddressesContext";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
 import OrderModeNotice from "./OrderModeNotice";
@@ -92,9 +93,17 @@ function CustomOrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, customOp, runCustomBatch, cancelOp, clearError } = useOrderOps();
   const { loading, progress, orders, error, errorContext, droppedFields } = customOp;
 
-  const [addressPreset, setAddressPreset] = useState("US");
+  const { addresses } = useSavedAddresses();
+  const [addressChoice, setAddressChoice] = useState("US");
   const [orderCount, setOrderCount]       = useState(1);
   const [variantId, setVariantId]         = useState("");
+
+  useEffect(() => {
+    if (addressChoice.startsWith("saved:")) {
+      const id = addressChoice.slice(6);
+      if (!addresses.some((a) => a.id === id)) setAddressChoice("US");
+    }
+  }, [addresses, addressChoice]);
 
   const [enabled, setEnabled] = useState({ quantity: true, price: true });
   const [values,  setValues]  = useState(() => {
@@ -108,26 +117,34 @@ function CustomOrderForm() {
   const get      = (key) => (enabled[key] ? values[key] : defaultOf(key));
 
   const buildPayload = () => {
-    const preset = ADDRESS_PRESETS[addressPreset] ?? ADDRESS_PRESETS.US;
-    const phone  = get("phone") || faker.helpers.arrayElement(preset.phones);
+    // Address source: either a built-in preset or a saved address (falling back to preset fields for anything missing).
+    const preset = ADDRESS_PRESETS.US;
+    let src;
+    if (addressChoice.startsWith("saved:")) {
+      const id = addressChoice.slice(6);
+      src = addresses.find((a) => a.id === id) ?? preset;
+    } else {
+      src = ADDRESS_PRESETS[addressChoice] ?? preset;
+    }
+    const phone  = get("phone") || src.phone || faker.helpers.arrayElement(preset.phones);
 
     const address = {
-      first_name: get("first_name") || faker.person.firstName(),
-      last_name:  get("last_name")  || faker.person.lastName(),
-      company:    get("company")    || faker.company.name(),
-      address1:   preset.address1,
-      address2:   preset.address2,
-      city:       preset.city,
-      province:   preset.province,
-      country:    preset.country,
-      zip:        preset.zip,
+      first_name: get("first_name") || src.first_name || faker.person.firstName(),
+      last_name:  get("last_name")  || src.last_name  || faker.person.lastName(),
+      company:    get("company")    || src.company    || faker.company.name(),
+      address1:   src.address1 ?? preset.address1,
+      address2:   src.address2 ?? preset.address2,
+      city:       src.city     ?? preset.city,
+      province:   src.province ?? preset.province,
+      country:    src.country  ?? preset.country,
+      zip:        src.zip      ?? preset.zip,
       phone,
     };
 
     const payload = {
       email:                get("email") || faker.internet.email(),
       phone,
-      currency:             get("currency") || preset.currency,
+      currency:             get("currency") || src.currency || preset.currency,
       financial_status:     get("financial_status") || "paid",
       note:                 get("note"),
       tags:                 get("tags"),
@@ -232,12 +249,23 @@ function CustomOrderForm() {
                 required />
             </div>
             <div>
-              <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Shipping Address Preset</label>
-              <select value={addressPreset} onChange={(e) => setAddressPreset(e.target.value)}
+              <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">Shipping Address</label>
+              <select value={addressChoice} onChange={(e) => setAddressChoice(e.target.value)}
                 className="w-full bg-white dark:bg-slate-900 border-2 border-gray-300 dark:border-slate-600 focus:border-purple-500 outline-none rounded-xl py-2.5 px-3 text-sm text-gray-800 dark:text-slate-100 transition-colors cursor-pointer">
-                {Object.entries(ADDRESS_PRESETS).map(([key, p]) => (
-                  <option key={key} value={key}>{p.label} — {p.address1}, {p.city}</option>
-                ))}
+                <optgroup label="Built-in presets">
+                  {Object.entries(ADDRESS_PRESETS).map(([key, p]) => (
+                    <option key={key} value={key}>{p.label} — {p.address1}, {p.city}</option>
+                  ))}
+                </optgroup>
+                {addresses.length > 0 && (
+                  <optgroup label="Saved addresses">
+                    {addresses.map((a) => (
+                      <option key={a.id} value={`saved:${a.id}`}>
+                        {a.name} — {[a.address1, a.city, a.zip].filter(Boolean).join(", ")}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
             <div>
