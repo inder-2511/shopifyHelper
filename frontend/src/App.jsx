@@ -13,6 +13,7 @@ import FetchProductPage from "./pages/products/FetchProductPage";
 import Settings from "./pages/Settings";
 import CreateStore from "./pages/CreateStore";
 import CreateEnvPage from "./pages/CreateEnvPage";
+import CreateTogglesPage from "./pages/CreateTogglesPage";
 import SetupMarketsPage from "./pages/store-setup/SetupMarketsPage";
 import SetupShippingPage from "./pages/store-setup/SetupShippingPage";
 import ImportProductsPage from "./pages/store-setup/ImportProductsPage";
@@ -24,6 +25,7 @@ import { OrderOpsProvider } from "./context/OrderOpsContext";
 import { OrderSettingsProvider } from "./context/OrderSettingsContext";
 import { SavedStoresProvider } from "./context/SavedStoresContext";
 import { SavedAddressesProvider } from "./context/SavedAddressesContext";
+import { SavedTogglesProvider } from "./context/SavedTogglesContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
@@ -34,6 +36,7 @@ function App() {
     <ActivityProvider>
     <SavedStoresProvider>
     <SavedAddressesProvider>
+    <SavedTogglesProvider>
     <StoreCreationProvider>
     <OrderSettingsProvider>
     <OrderOpsProvider>
@@ -54,6 +57,8 @@ function App() {
         <Route path="/products/fetch" element={<FetchProductPage />} />
 
         <Route path="/create-env" element={<CreateEnvPage />} />
+        <Route path="/create-env/products" element={<CreateEnvPage />} />
+        <Route path="/create-env/toggles" element={<CreateTogglesPage />} />
 
         <Route path="/settings" element={<Settings />} />
 
@@ -72,6 +77,7 @@ function App() {
     </OrderOpsProvider>
     </OrderSettingsProvider>
     </StoreCreationProvider>
+    </SavedTogglesProvider>
     </SavedAddressesProvider>
     </SavedStoresProvider>
     </ActivityProvider>

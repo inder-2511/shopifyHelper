@@ -28,6 +28,11 @@ const productItems = [
   { name: "Fetch Product",     path: "/products/fetch" },
 ];
 
+const createEnvItems = [
+  { name: "Products",  path: "/create-env/products" },
+  { name: "Toggles",   path: "/create-env/toggles" },
+];
+
 const HIDE_LOCAL_FEATURES = import.meta.env.VITE_HIDE_LOCAL_FEATURES === "true";
 
 const storeSetupItemsAll = [
@@ -106,15 +111,18 @@ function Sidebar() {
 
   const isOrdersPath     = location.pathname.startsWith("/orders");
   const isProductsPath   = location.pathname === "/products" || location.pathname.startsWith("/products/");
+  const isCreateEnvPath  = location.pathname === "/create-env" || location.pathname.startsWith("/create-env/");
   const isStoreSetupPath = location.pathname.startsWith("/store-setup/");
 
   const [ordersOpen,     setOrdersOpen]     = useState(isOrdersPath);
   const [productsOpen,   setProductsOpen]   = useState(isProductsPath);
+  const [createEnvOpen,  setCreateEnvOpen]  = useState(isCreateEnvPath);
   const [storeSetupOpen, setStoreSetupOpen] = useState(isStoreSetupPath);
 
   useEffect(() => {
     if (isOrdersPath)     setOrdersOpen(true);
     if (isProductsPath)   setProductsOpen(true);
+    if (isCreateEnvPath)  setCreateEnvOpen(true);
     if (isStoreSetupPath) setStoreSetupOpen(true);
   }, [location.pathname]);
 
@@ -168,16 +176,16 @@ function Sidebar() {
             location={location}
           />
 
-          {/* Create ENV */}
-          <Link
-            to="/create-env"
-            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
-              location.pathname === "/create-env" ? "bg-gradient-to-r from-purple-600 to-purple-500" : "hover:bg-white/10"
-            }`}
-          >
-            <FileCode size={20} />
-            <span className="text-lg">Create ENV</span>
-          </Link>
+          {/* Create ENV collapsible */}
+          <CollapsibleMenu
+            icon={<FileCode size={20} />}
+            label="Create ENV"
+            items={createEnvItems}
+            isActive={isCreateEnvPath}
+            open={createEnvOpen}
+            onToggle={() => setCreateEnvOpen((p) => !p)}
+            location={location}
+          />
 
           {/* Create Store — automated via Playwright (local only) */}
           {!HIDE_LOCAL_FEATURES && (

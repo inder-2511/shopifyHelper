@@ -2,12 +2,14 @@ import { AlertTriangle, Trash2 } from "lucide-react";
 import { useActivity } from "../../context/ActivityContext";
 import { useSavedStores } from "../../context/SavedStoresContext";
 import { useSavedAddresses } from "../../context/SavedAddressesContext";
+import { useSavedToggles } from "../../context/SavedTogglesContext";
 import { useToast } from "../../context/ToastContext";
 
 function DangerZoneSection() {
   const { clearActivities } = useActivity();
   const { clearStores } = useSavedStores();
   const { clearAddresses } = useSavedAddresses();
+  const { clearToggles } = useSavedToggles();
   const { showToast } = useToast();
 
   const doAndConfirm = (label, effect) => () => {
@@ -44,6 +46,11 @@ function DangerZoneSection() {
           label="Clear saved addresses"
           description="Deletes all saved shipping/billing addresses."
           onClick={doAndConfirm("Clear saved addresses", clearAddresses)}
+        />
+        <Row
+          label="Clear saved toggles"
+          description="Empties the toggle catalog used by Create ENV → Toggles."
+          onClick={doAndConfirm("Clear saved toggles", clearToggles)}
         />
         <Row
           label="Reset all local data"
