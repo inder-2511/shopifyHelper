@@ -13,6 +13,7 @@ import {
   Copy,
   Sliders,
   Search,
+  FileCode,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import { useActivity } from "../context/ActivityContext";
@@ -54,6 +55,13 @@ const quickActionsAll = [
     path: "/products",
     icon: Package,
     iconBg: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
+  },
+  {
+    label: "Create ENV",
+    description: "Pick products, copy an ENV block",
+    path: "/create-env",
+    icon: FileCode,
+    iconBg: "bg-fuchsia-100 text-fuchsia-600 dark:bg-fuchsia-900/30 dark:text-fuchsia-400",
   },
   {
     label: "Create Store",

@@ -12,6 +12,7 @@ import DeleteProductPage from "./pages/products/DeleteProductPage";
 import FetchProductPage from "./pages/products/FetchProductPage";
 import Settings from "./pages/Settings";
 import CreateStore from "./pages/CreateStore";
+import CreateEnvPage from "./pages/CreateEnvPage";
 import SetupMarketsPage from "./pages/store-setup/SetupMarketsPage";
 import SetupShippingPage from "./pages/store-setup/SetupShippingPage";
 import ImportProductsPage from "./pages/store-setup/ImportProductsPage";
@@ -51,6 +52,8 @@ function App() {
         <Route path="/products/duplicate" element={<DuplicateProductPage />} />
         <Route path="/products/delete" element={<DeleteProductPage />} />
         <Route path="/products/fetch" element={<FetchProductPage />} />
+
+        <Route path="/create-env" element={<CreateEnvPage />} />
 
         <Route path="/settings" element={<Settings />} />
 

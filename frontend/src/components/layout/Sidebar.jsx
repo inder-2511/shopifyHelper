@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ChevronDown,
   Wrench,
+  FileCode,
 } from "lucide-react";
 
 import { Link, useLocation } from "react-router-dom";
@@ -166,6 +167,17 @@ function Sidebar() {
             onToggle={() => setProductsOpen((p) => !p)}
             location={location}
           />
+
+          {/* Create ENV */}
+          <Link
+            to="/create-env"
+            className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 ${
+              location.pathname === "/create-env" ? "bg-gradient-to-r from-purple-600 to-purple-500" : "hover:bg-white/10"
+            }`}
+          >
+            <FileCode size={20} />
+            <span className="text-lg">Create ENV</span>
+          </Link>
 
           {/* Create Store — automated via Playwright (local only) */}
           {!HIDE_LOCAL_FEATURES && (
