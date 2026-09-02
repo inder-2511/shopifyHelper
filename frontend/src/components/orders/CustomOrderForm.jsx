@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Hash, Loader2, XCircle, Sliders } from "lucide-react";
 import { faker } from "@faker-js/faker";
-import { ADDRESS_PRESETS } from "../../utils/orderPayload";
+import { ADDRESS_PRESETS, toGrams } from "../../utils/orderPayload";
 import { useSavedAddresses } from "../../context/SavedAddressesContext";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import OrderResultsPanel from "./OrderResultsPanel";
@@ -17,6 +17,8 @@ const FIELD_GROUPS = [
     fields: [
       { key: "quantity",           label: "Quantity",           type: "number",  placeholder: "1",              default: "1",     required: true },
       { key: "price",              label: "Price",              type: "number",  placeholder: "10.00",          default: "10.00", required: true },
+      { key: "weight_value",       label: "Weight (blank = variant default)", type: "number", placeholder: "500", default: "" },
+      { key: "weight_unit",        label: "Weight Unit",        type: "select",  options: [["g","grams"],["kg","kilograms"],["lb","pounds"],["oz","ounces"]], default: "g" },
       { key: "requires_shipping",  label: "Requires Shipping",  type: "select",  options: [["true","Yes"],["false","No"]],        default: "true" },
       { key: "taxable",            label: "Taxable",            type: "select",  options: [["true","Yes"],["false","No"]],        default: "true" },
     ],
@@ -155,13 +157,20 @@ function CustomOrderForm() {
       inventory_behaviour:  get("inventory_behaviour"),
       shipping_address:     address,
       billing_address:      address,
-      line_items: [{
-        variant_id:        Number(variantId),
-        quantity:          Number(get("quantity")),
-        price:             get("price"),
-        requires_shipping: get("requires_shipping") === "true",
-        taxable:           get("taxable") === "true",
-      }],
+      line_items: [(() => {
+        const item = {
+          variant_id:        Number(variantId),
+          quantity:          Number(get("quantity")),
+          price:             get("price"),
+          requires_shipping: get("requires_shipping") === "true",
+          taxable:           get("taxable") === "true",
+        };
+        if (enabled["weight_value"]) {
+          const g = toGrams(get("weight_value"), get("weight_unit"));
+          if (g != null) item.grams = g;
+        }
+        return item;
+      })()],
     };
 
     const hasTxn = ["txn_gateway","txn_kind","txn_status","txn_amount"].some((k) => enabled[k]);

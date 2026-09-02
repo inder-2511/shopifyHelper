@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Hash, Loader2, XCircle, Plus, Trash2 } from "lucide-react";
-import { buildOrderPayload, ADDRESS_PRESETS } from "../../utils/orderPayload";
+import { buildOrderPayload, ADDRESS_PRESETS, WEIGHT_UNITS } from "../../utils/orderPayload";
 import { useOrderOps } from "../../context/OrderOpsContext";
 import { useSavedAddresses } from "../../context/SavedAddressesContext";
 import OrderResultsPanel from "./OrderResultsPanel";
@@ -17,6 +17,8 @@ const makeRow = (overrides = {}) => ({
   variantId: "",
   quantity: 1,
   price: 10,
+  weight: "",       // blank = use variant's default weight
+  weightUnit: "g",
   ...overrides,
 });
 
@@ -59,7 +61,9 @@ function OrderForm() {
   };
 
   useEffect(() => {
-    const bare = items.map(({ variantId, quantity, price }) => ({ variantId, quantity, price }));
+    const bare = items.map(({ variantId, quantity, price, weight, weightUnit }) => ({
+      variantId, quantity, price, weight, weightUnit,
+    }));
     localStorage.setItem(LINE_ITEMS_KEY, JSON.stringify(bare));
   }, [items]);
 
@@ -167,6 +171,37 @@ function OrderForm() {
                       <input type="number" value={row.price} disabled={loading}
                         onChange={(e) => updateItem(row.key, { price: e.target.value })}
                         className={inputCls} />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">
+                        Weight
+                        <span className="ml-2 font-normal text-gray-400 dark:text-slate-500 text-xs">
+                          (optional — blank uses the variant's stored weight)
+                        </span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={row.weight}
+                          disabled={loading}
+                          onChange={(e) => updateItem(row.key, { weight: e.target.value })}
+                          placeholder="e.g. 500"
+                          className={`${inputCls} flex-1`}
+                        />
+                        <select
+                          value={row.weightUnit}
+                          disabled={loading}
+                          onChange={(e) => updateItem(row.key, { weightUnit: e.target.value })}
+                          className={`${inputCls} w-24 cursor-pointer`}
+                        >
+                          {WEIGHT_UNITS.map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -1,5 +1,25 @@
 import { faker } from "@faker-js/faker";
 
+/**
+ * Convert a weight to Shopify's canonical unit (integer grams).
+ * Returns null for empty / invalid input so the caller can omit the field entirely
+ * and let Shopify fall back to the variant's own weight.
+ *
+ * Supported units: g (default), kg, lb, oz.
+ */
+export const WEIGHT_UNITS = ["g", "kg", "lb", "oz"];
+export const toGrams = (value, unit = "g") => {
+  if (value === "" || value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  const factor =
+    unit === "kg" ? 1000 :
+    unit === "lb" ? 453.59237 :
+    unit === "oz" ? 28.3495231 :
+    1;
+  return Math.round(n * factor);
+};
+
 export const ADDRESS_PRESETS = {
   US: {
     label: "🇺🇸 United States",
@@ -126,11 +146,16 @@ export const buildOrderPayload = ({
 
   const line_items = rows
     .filter((row) => String(row.variantId ?? "").trim() !== "")
-    .map((row) => ({
-      variant_id: Number(row.variantId),
-      quantity: Number(row.quantity),
-      price: Number(row.price),
-    }));
+    .map((row) => {
+      const item = {
+        variant_id: Number(row.variantId),
+        quantity: Number(row.quantity),
+        price: Number(row.price),
+      };
+      const g = toGrams(row.weight, row.weightUnit);
+      if (g != null) item.grams = g;
+      return item;
+    });
 
   const finalAddress = {
     first_name: resolvedFirst,
