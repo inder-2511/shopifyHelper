@@ -132,9 +132,43 @@ const createViaDraftOrder = async (shopifyApi, orderData) => {
   return { order: data.order, draftOrderId: draftId, viaDraftOrder: true, droppedFields };
 };
 
+// Shopify's Order / DraftOrder endpoints snapshot weight from the variant record —
+// a `grams` field on a line item is ignored on write and echoed back read-only.
+// So when the caller wants a specific weight, update the variant's stored weight
+// first, then post the order without the per-line override.
+//
+// Side effect: this changes the variant's weight for every future order too, until
+// something else updates it. Documented in the UI copy so users aren't surprised.
+const applyLineItemWeights = async (shopifyApi, orderData) => {
+  const items = orderData.line_items ?? [];
+  const withWeight = items.filter(
+    (item) => item?.variant_id != null && Number.isFinite(Number(item?.grams))
+  );
+  if (!withWeight.length) return orderData;
+
+  // Multiple lines can reference the same variant; take the last non-empty grams.
+  const byVariant = new Map();
+  for (const item of withWeight) {
+    byVariant.set(Number(item.variant_id), Math.round(Number(item.grams)));
+  }
+
+  for (const [variantId, grams] of byVariant) {
+    await shopifyApi.put(`/variants/${variantId}.json`, {
+      variant: { id: variantId, grams },
+    });
+  }
+
+  return {
+    ...orderData,
+    // Strip the read-only override; Shopify will now snapshot from the updated variant.
+    line_items: items.map(({ grams, ...rest }) => rest),
+  };
+};
+
 const postOrder = async (shopifyApi, orderData, viaDraftOrder) => {
-  if (viaDraftOrder) return createViaDraftOrder(shopifyApi, orderData);
-  const response = await shopifyApi.post("/orders.json", { order: orderData });
+  const patchedData = await applyLineItemWeights(shopifyApi, orderData);
+  if (viaDraftOrder) return createViaDraftOrder(shopifyApi, patchedData);
+  const response = await shopifyApi.post("/orders.json", { order: patchedData });
   return { order: response.data.order, viaDraftOrder: false, droppedFields: [] };
 };
 

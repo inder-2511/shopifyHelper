@@ -17,7 +17,7 @@ const FIELD_GROUPS = [
     fields: [
       { key: "quantity",           label: "Quantity",           type: "number",  placeholder: "1",              default: "1",     required: true },
       { key: "price",              label: "Price",              type: "number",  placeholder: "10.00",          default: "10.00", required: true },
-      { key: "weight_value",       label: "Weight (blank = variant default)", type: "number", placeholder: "500", default: "" },
+      { key: "weight_value",       label: "Weight (updates variant weight on store)", type: "number", placeholder: "500", default: "" },
       { key: "weight_unit",        label: "Weight Unit",        type: "select",  options: [["g","grams"],["kg","kilograms"],["lb","pounds"],["oz","ounces"]], default: "g" },
       { key: "requires_shipping",  label: "Requires Shipping",  type: "select",  options: [["true","Yes"],["false","No"]],        default: "true" },
       { key: "taxable",            label: "Taxable",            type: "select",  options: [["true","Yes"],["false","No"]],        default: "true" },

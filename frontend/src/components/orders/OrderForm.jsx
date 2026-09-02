@@ -177,7 +177,7 @@ function OrderForm() {
                       <label className="font-semibold text-gray-700 dark:text-slate-300 block mb-1.5 text-sm">
                         Weight
                         <span className="ml-2 font-normal text-gray-400 dark:text-slate-500 text-xs">
-                          (optional — blank uses the variant's stored weight)
+                          (optional — updates the variant's stored weight on the store; leave blank to keep it as-is)
                         </span>
                       </label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 7rem", gap: "0.5rem" }}>
