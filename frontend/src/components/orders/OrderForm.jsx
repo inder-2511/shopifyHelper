@@ -180,7 +180,7 @@ function OrderForm() {
                           (optional — blank uses the variant's stored weight)
                         </span>
                       </label>
-                      <div className="grid grid-cols-[1fr_7rem] gap-2">
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 7rem", gap: "0.5rem" }}>
                         <input
                           type="number"
                           min={0}
@@ -190,12 +190,14 @@ function OrderForm() {
                           onChange={(e) => updateItem(row.key, { weight: e.target.value })}
                           placeholder="e.g. 500"
                           className={inputCls}
+                          style={{ width: "100%", minWidth: 0 }}
                         />
                         <select
                           value={row.weightUnit}
                           disabled={loading}
                           onChange={(e) => updateItem(row.key, { weightUnit: e.target.value })}
                           className={`${inputCls} cursor-pointer`}
+                          style={{ width: "100%", minWidth: 0 }}
                         >
                           {WEIGHT_UNITS.map((u) => (
                             <option key={u} value={u}>{u}</option>
