@@ -180,7 +180,7 @@ function OrderForm() {
                           (optional — blank uses the variant's stored weight)
                         </span>
                       </label>
-                      <div className="flex gap-2">
+                      <div className="grid grid-cols-[1fr_7rem] gap-2">
                         <input
                           type="number"
                           min={0}
@@ -189,13 +189,13 @@ function OrderForm() {
                           disabled={loading}
                           onChange={(e) => updateItem(row.key, { weight: e.target.value })}
                           placeholder="e.g. 500"
-                          className={`${inputCls} flex-1`}
+                          className={inputCls}
                         />
                         <select
                           value={row.weightUnit}
                           disabled={loading}
                           onChange={(e) => updateItem(row.key, { weightUnit: e.target.value })}
-                          className={`${inputCls} w-24 cursor-pointer`}
+                          className={`${inputCls} cursor-pointer`}
                         >
                           {WEIGHT_UNITS.map((u) => (
                             <option key={u} value={u}>{u}</option>
