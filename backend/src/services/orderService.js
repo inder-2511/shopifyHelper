@@ -208,20 +208,7 @@ export const createOrderService = async (
 
 export const fetchOrderService = async (orderId, storeUrl, token) => {
   const shopifyApi = createShopifyApi(storeUrl, token);
-
-  const isNumeric = /^\d+$/.test(orderId.toString().trim());
-  if (isNumeric) {
-    const response = await shopifyApi.get(`/orders/${orderId}.json`);
-    return response.data.order;
-  }
-
-  const name = orderId.toString().trim().startsWith("#") ? orderId : `#${orderId}`;
-  const search = await shopifyApi.get(
-    `/orders.json?name=${encodeURIComponent(name)}&status=any`
-  );
-  const orders = search.data.orders;
-  if (!orders?.length) throw new Error(`Order ${name} not found`);
-  return orders[0];
+  return resolveOrder(shopifyApi, orderId);
 };
 
 // Server-managed fields on an address object (ids/snapshots) that Shopify will
@@ -238,6 +225,46 @@ const stripAddress = (addr) => {
 // (ids, timestamps, totals, confirmation numbers). Reproducing financial_status
 // "paid" requires posting a matching transaction — just copying the string
 // leaves the new order as "pending".
+// Resolve a user-typed identifier to a full Shopify order.
+//
+// Users typically type what they see in the admin — the order *name* (e.g. "2564"
+// or "#2564"), not the internal numeric ID (which is 13+ digits now). The old
+// logic treated any all-digit input as an ID, so "2564" became GET /orders/2564.json
+// → 404. We now:
+//   • always treat a `#`-prefixed value as a name
+//   • treat short numbers (< 10 digits) as names
+//   • for longer numeric input, try as ID first and fall back to name search on 404
+export const resolveOrder = async (shopifyApi, rawInput) => {
+  const trimmed = String(rawInput ?? "").trim();
+  if (!trimmed) throw new Error("Order ID or name required");
+
+  const bare = trimmed.replace(/^#/, "");
+  const isAllDigits = /^\d+$/.test(bare);
+
+  const findByName = async () => {
+    const needle = `#${bare}`;
+    const search = await shopifyApi.get(
+      `/orders.json?name=${encodeURIComponent(needle)}&status=any`
+    );
+    const found = search.data.orders?.[0];
+    if (!found) throw new Error(`Order ${needle} not found`);
+    return found;
+  };
+
+  if (trimmed.startsWith("#") || !isAllDigits || bare.length < 10) {
+    return findByName();
+  }
+
+  // Numeric and long enough to plausibly be a real Shopify ID — try that path first.
+  try {
+    const { data } = await shopifyApi.get(`/orders/${bare}.json`);
+    return data.order;
+  } catch (err) {
+    if (err.response?.status === 404) return findByName();
+    throw err;
+  }
+};
+
 // Order-level data that Shopify stores adjacent to the order record and does NOT
 // return on the default GET /orders/{id}.json. Fetch each as its own endpoint and
 // pass the lot through as `extras` to cloneOrderForCreate so they end up in the
@@ -366,21 +393,7 @@ export const cloneOrderForCreate = (src, extras = {}) => {
 // transformation as duplicateOrderService uses — but doesn't post.
 export const cloneTemplateService = async (orderId, storeUrl, token) => {
   const shopifyApi = createShopifyApi(storeUrl, token);
-  const id = orderId.toString().trim();
-
-  let src;
-  if (/^\d+$/.test(id)) {
-    const { data } = await shopifyApi.get(`/orders/${id}.json`);
-    src = data.order;
-  } else {
-    const name = id.startsWith("#") ? id : `#${id}`;
-    const search = await shopifyApi.get(
-      `/orders.json?name=${encodeURIComponent(name)}&status=any`
-    );
-    src = search.data.orders?.[0];
-    if (!src) throw new Error(`Order ${name} not found`);
-  }
-
+  const src = await resolveOrder(shopifyApi, orderId);
   const extras = await fetchOrderExtras(shopifyApi, src.id);
 
   return {
@@ -396,16 +409,7 @@ export const duplicateOrderService = async (
   { viaDraftOrder = false } = {}
 ) => {
   const shopifyApi = createShopifyApi(storeUrl, token);
-
-  // Fetch source order by name (with or without #)
-  const name = orderName.toString().startsWith("#") ? orderName : `#${orderName}`;
-  const search = await shopifyApi.get(
-    `/orders.json?name=${encodeURIComponent(name)}&status=any`
-  );
-  const orders = search.data.orders;
-  if (!orders?.length) throw new Error(`Order ${name} not found`);
-
-  const src = orders[0];
+  const src = await resolveOrder(shopifyApi, orderName);
   const extras = await fetchOrderExtras(shopifyApi, src.id);
   const newOrder = cloneOrderForCreate(src, extras);
   const result = await postOrder(shopifyApi, newOrder, viaDraftOrder);
