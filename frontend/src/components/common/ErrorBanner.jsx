@@ -38,8 +38,18 @@ function ErrorBanner({ error, onRetry, onDismiss, context }) {
           {error.message && error.message !== error.title && (
             <details className="text-[11px] opacity-70">
               <summary className="cursor-pointer hover:opacity-100">Show raw response</summary>
-              <pre className="mt-1 whitespace-pre-wrap break-all font-mono text-[10px] max-h-40 overflow-auto bg-white/40 dark:bg-black/20 rounded p-2">
+              <pre className="mt-1 whitespace-pre-wrap break-all font-mono text-[10px] max-h-60 overflow-auto bg-white/40 dark:bg-black/20 rounded p-2">
                 {error.message}
+              </pre>
+            </details>
+          )}
+          {error.sentPayload && (
+            <details className="text-[11px] opacity-70">
+              <summary className="cursor-pointer hover:opacity-100">Show sent request</summary>
+              <pre className="mt-1 whitespace-pre-wrap break-all font-mono text-[10px] max-h-80 overflow-auto bg-white/40 dark:bg-black/20 rounded p-2">
+                {typeof error.sentPayload === "string"
+                  ? error.sentPayload
+                  : JSON.stringify(error.sentPayload, null, 2)}
               </pre>
             </details>
           )}

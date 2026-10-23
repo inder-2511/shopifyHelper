@@ -1,4 +1,18 @@
-import { createOrderService, duplicateOrderService, fetchOrderService } from "../services/orderService.js";
+import {
+  createOrderService,
+  duplicateOrderService,
+  fetchOrderService,
+  cloneTemplateService,
+} from "../services/orderService.js";
+
+const respondWithError = (res, error, label) => {
+  const shopifyError = error.response?.data;
+  console.error(`${label} failed:`, shopifyError ?? error.message);
+  res.status(error.response?.status ?? 500).json({
+    error: shopifyError ?? error.message,
+    sentPayload: error.sentPayload ?? null,
+  });
+};
 
 export const createOrder = async (req, res) => {
   try {
@@ -9,11 +23,7 @@ export const createOrder = async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    const shopifyError = error.response?.data;
-    console.error("Order creation failed:", shopifyError ?? error.message);
-    res.status(error.response?.status ?? 500).json({
-      error: shopifyError ?? error.message,
-    });
+    respondWithError(res, error, "Order creation");
   }
 };
 
@@ -23,11 +33,17 @@ export const fetchOrder = async (req, res) => {
     const result = await fetchOrderService(orderId, storeUrl, token);
     res.json(result);
   } catch (error) {
-    const shopifyError = error.response?.data;
-    console.error("Order fetch failed:", shopifyError ?? error.message);
-    res.status(error.response?.status ?? 500).json({
-      error: shopifyError ?? error.message,
-    });
+    respondWithError(res, error, "Order fetch");
+  }
+};
+
+export const cloneTemplate = async (req, res) => {
+  try {
+    const { storeUrl, token, orderId } = req.body;
+    const result = await cloneTemplateService(orderId, storeUrl, token);
+    res.json(result);
+  } catch (error) {
+    respondWithError(res, error, "Order clone template");
   }
 };
 
@@ -39,10 +55,6 @@ export const duplicateOrder = async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    const shopifyError = error.response?.data;
-    console.error("Order duplication failed:", shopifyError ?? error.message);
-    res.status(error.response?.status ?? 500).json({
-      error: shopifyError ?? error.message,
-    });
+    respondWithError(res, error, "Order duplication");
   }
 };

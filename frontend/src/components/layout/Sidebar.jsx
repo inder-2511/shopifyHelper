@@ -18,6 +18,7 @@ const orderItems = [
   { name: "Duplicate Order", path: "/orders/duplicate" },
   { name: "Custom Order",    path: "/orders/custom" },
   { name: "Fetch Order",     path: "/orders/fetch" },
+  { name: "Edit JSON Order", path: "/orders/edit-json" },
 ];
 
 const productItems = [

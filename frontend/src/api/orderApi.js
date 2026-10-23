@@ -14,3 +14,8 @@ export const fetchOrderApi = async (storeUrl, token, orderId) => {
   const response = await api.post("api/orders/fetch", { storeUrl, token, orderId });
   return response.data;
 };
+
+export const cloneTemplateApi = async (storeUrl, token, orderId) => {
+  const response = await api.post("api/orders/clone-template", { storeUrl, token, orderId });
+  return response.data;
+};

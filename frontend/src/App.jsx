@@ -5,6 +5,7 @@ import Orders from "./pages/Orders";
 import DuplicateOrderPage from "./pages/DuplicateOrderPage";
 import FetchOrderPage from "./pages/FetchOrderPage";
 import CustomOrderPage from "./pages/CustomOrderPage";
+import EditOrderJsonPage from "./pages/EditOrderJsonPage";
 import ListProductsPage from "./pages/products/ListProductsPage";
 import CreateProductPage from "./pages/products/CreateProductPage";
 import DuplicateProductPage from "./pages/products/DuplicateProductPage";
@@ -49,6 +50,7 @@ function App() {
         <Route path="/orders/duplicate" element={<DuplicateOrderPage />} />
         <Route path="/orders/custom" element={<CustomOrderPage />} />
         <Route path="/orders/fetch" element={<FetchOrderPage />} />
+        <Route path="/orders/edit-json" element={<EditOrderJsonPage />} />
 
         <Route path="/products" element={<ListProductsPage />} />
         <Route path="/products/create" element={<CreateProductPage />} />

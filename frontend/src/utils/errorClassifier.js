@@ -37,8 +37,35 @@ export function classifyError(err) {
 
   const status = err.response.status;
   const body = err.response.data;
-  const shopifyErr = body?.error ?? body?.errors ?? body;
+  // Our backend wraps Shopify errors as { error, sentPayload } — unwrap.
+  const sentPayload = body?.sentPayload ?? null;
+  const wrapped = body?.error ?? body?.errors ?? body;
+  // The Shopify response itself may again be { errors: {...} } or { error: "..." }.
+  const shopifyErr =
+    (wrapped && typeof wrapped === "object" && (wrapped.errors ?? wrapped.error)) || wrapped;
   const detail = typeof shopifyErr === "string" ? shopifyErr : JSON.stringify(shopifyErr);
+
+  const fieldErrors = () => {
+    if (typeof shopifyErr !== "object" || !shopifyErr) return null;
+    const parts = [];
+    for (const [field, msgs] of Object.entries(shopifyErr)) {
+      const arr = Array.isArray(msgs) ? msgs : [msgs];
+      parts.push(`${field}: ${arr.join(", ")}`);
+    }
+    return parts.length ? parts.join(" • ") : null;
+  };
+
+  if (status === 400) {
+    return {
+      kind: "validation",
+      retriable: false,
+      status,
+      title: "Shopify rejected the payload (400)",
+      message: fieldErrors() ?? detail,
+      action: "Fix the flagged fields and retry. The sent request body is shown below for debugging.",
+      sentPayload,
+    };
+  }
 
   if (status === 401) {
     return {
@@ -48,6 +75,7 @@ export function classifyError(err) {
       title: "Access token invalid or expired",
       message: detail,
       action: "Update the Admin API token in Settings. Retrying won't help — the token needs to be fixed.",
+      sentPayload,
     };
   }
 
@@ -59,6 +87,7 @@ export function classifyError(err) {
       title: "Missing required scope",
       message: detail,
       action: "The Admin token doesn't have permission for this operation. In Shopify admin → Apps → your app → Configuration, grant the required scope (e.g. write_orders, write_products) and reinstall the app to refresh the token.",
+      sentPayload,
     };
   }
 
@@ -70,27 +99,19 @@ export function classifyError(err) {
       title: "Not found",
       message: detail,
       action: "Check the store URL and the resource ID / name you entered. Retrying won't help.",
+      sentPayload,
     };
   }
 
   if (status === 422) {
-    // Try to pull out the Shopify field errors for a friendlier line
-    let friendlyList = null;
-    if (typeof shopifyErr === "object" && shopifyErr) {
-      const parts = [];
-      for (const [field, msgs] of Object.entries(shopifyErr)) {
-        const arr = Array.isArray(msgs) ? msgs : [msgs];
-        parts.push(`${field}: ${arr.join(", ")}`);
-      }
-      if (parts.length) friendlyList = parts.join(" • ");
-    }
     return {
       kind: "validation",
       retriable: false,
       status,
       title: "Shopify rejected the payload",
-      message: friendlyList ?? detail,
+      message: fieldErrors() ?? detail,
       action: "Fix the flagged fields (e.g. invalid variant ID, missing required field, wrong data type) and retry manually.",
+      sentPayload,
     };
   }
 
@@ -102,6 +123,7 @@ export function classifyError(err) {
       title: "Rate limit hit",
       message: detail,
       action: "Shopify is throttling you. The app is waiting 65s before retrying.",
+      sentPayload,
     };
   }
 
@@ -113,6 +135,7 @@ export function classifyError(err) {
       title: `Shopify server error (${status})`,
       message: detail,
       action: "Shopify's servers had a hiccup. The app will retry a few times.",
+      sentPayload,
     };
   }
 
@@ -125,6 +148,7 @@ export function classifyError(err) {
       title: "Not available in production",
       message: detail,
       action: "This feature relies on browser automation and is disabled on the deployed backend. Run the app locally to use it.",
+      sentPayload,
     };
   }
 
@@ -135,5 +159,6 @@ export function classifyError(err) {
     title: `Request failed (${status})`,
     message: detail,
     action: "Check the payload and try again.",
+    sentPayload,
   };
 }

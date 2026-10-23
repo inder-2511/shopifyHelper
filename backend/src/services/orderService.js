@@ -165,11 +165,32 @@ const applyLineItemWeights = async (shopifyApi, orderData) => {
   };
 };
 
+// Attach the exact payload we sent to Shopify to any thrown error, so controllers
+// can forward it in the HTTP response and the UI can show "here's what we sent".
+const withSentPayload = (err, sentPayload) => {
+  err.sentPayload = sentPayload;
+  return err;
+};
+
 const postOrder = async (shopifyApi, orderData, viaDraftOrder) => {
   const patchedData = await applyLineItemWeights(shopifyApi, orderData);
-  if (viaDraftOrder) return createViaDraftOrder(shopifyApi, patchedData);
-  const response = await shopifyApi.post("/orders.json", { order: patchedData });
-  return { order: response.data.order, viaDraftOrder: false, droppedFields: [] };
+
+  if (viaDraftOrder) {
+    try {
+      return await createViaDraftOrder(shopifyApi, patchedData);
+    } catch (err) {
+      // The draft-order helper already builds its own payload shape internally.
+      // Surfacing the pre-transform data is still useful to the user.
+      throw withSentPayload(err, { via: "draft_order", input: patchedData });
+    }
+  }
+
+  try {
+    const response = await shopifyApi.post("/orders.json", { order: patchedData });
+    return { order: response.data.order, viaDraftOrder: false, droppedFields: [] };
+  } catch (err) {
+    throw withSentPayload(err, { via: "orders.json", body: { order: patchedData } });
+  }
 };
 
 export const createOrderService = async (
@@ -217,7 +238,7 @@ const stripAddress = (addr) => {
 // (ids, timestamps, totals, confirmation numbers). Reproducing financial_status
 // "paid" requires posting a matching transaction — just copying the string
 // leaves the new order as "pending".
-const cloneOrderForCreate = (src) => {
+export const cloneOrderForCreate = (src) => {
   const line_items = (src.line_items ?? []).map((item) => {
     const li = {
       variant_id: item.variant_id,
@@ -229,13 +250,11 @@ const cloneOrderForCreate = (src) => {
     if (item.sku)                    li.sku = item.sku;
     if (item.name)                   li.name = item.name;
     if (item.vendor)                 li.vendor = item.vendor;
-    if (item.requires_shipping != null) li.requires_shipping = item.requires_shipping;
-    if (item.taxable != null)        li.taxable = item.taxable;
-    if (item.fulfillment_service)    li.fulfillment_service = item.fulfillment_service;
-    if (item.properties?.length)     li.properties = item.properties;
-    if (item.tax_lines?.length) {
-      li.tax_lines = item.tax_lines.map(({ title, price, rate }) => ({ title, price, rate }));
-    }
+    if (typeof item.requires_shipping === "boolean") li.requires_shipping = item.requires_shipping;
+    if (typeof item.taxable === "boolean")           li.taxable = item.taxable;
+    if (item.fulfillment_service)                    li.fulfillment_service = item.fulfillment_service;
+    if (item.properties?.length)                     li.properties = item.properties;
+    // tax_lines intentionally dropped — Shopify re-derives from tax config.
     return li;
   });
 
@@ -248,28 +267,37 @@ const cloneOrderForCreate = (src) => {
     return line;
   });
 
+  // Treat empty strings as absence — Shopify rejects some fields (e.g. `tags`,
+  // `source_name`) with "Required parameter missing or invalid" when they're sent
+  // as empty.
+  const str  = (v) => (typeof v === "string" && v.trim() ? v : undefined);
+  const bool = (v) => (typeof v === "boolean" ? v : undefined);
+
   const payload = {
     line_items,
     shipping_address:        stripAddress(src.shipping_address),
     billing_address:         stripAddress(src.billing_address),
-    email:                   src.email ?? undefined,
-    phone:                   src.phone ?? undefined,
-    currency:                src.currency ?? undefined,
-    taxes_included:          src.taxes_included ?? undefined,
-    tax_exempt:              src.tax_exempt ?? undefined,
-    note:                    src.note ?? undefined,
+    email:                   str(src.email),
+    phone:                   str(src.phone),
+    currency:                str(src.currency),
+    taxes_included:          bool(src.taxes_included),
+    tax_exempt:              bool(src.tax_exempt),
+    note:                    str(src.note),
     note_attributes:         src.note_attributes?.length ? src.note_attributes : undefined,
-    tags:                    src.tags ?? undefined,
-    source_name:             src.source_name ?? undefined,
-    po_number:               src.po_number ?? undefined,
-    buyer_accepts_marketing: src.buyer_accepts_marketing ?? undefined,
-    financial_status:        src.financial_status ?? undefined,
-    fulfillment_status:      src.fulfillment_status ?? undefined,
-    customer_locale:         src.customer_locale ?? undefined,
+    tags:                    str(src.tags),
+    po_number:               str(src.po_number),
+    buyer_accepts_marketing: bool(src.buyer_accepts_marketing),
+    financial_status:        str(src.financial_status),
+    customer_locale:         str(src.customer_locale),
     // Default to not spamming the customer again on a duplicate. Explicit so
     // it survives any Shopify default change.
     send_receipt:              false,
     send_fulfillment_receipt:  false,
+    // Deliberately NOT copied:
+    //   • source_name — Shopify restricts to the creating app's own channel; copying
+    //     another app's value triggers a 400 on create.
+    //   • fulfillment_status — Shopify derives this from fulfillments; sending a
+    //     snapshot value from the source conflicts with having zero fulfillments.
   };
 
   if (shipping_lines.length) payload.shipping_lines = shipping_lines;
@@ -296,6 +324,28 @@ const cloneOrderForCreate = (src) => {
   }
 
   return payload;
+};
+
+// Fetch an order by name/id and return the clean "cloneable" payload. Same
+// transformation as duplicateOrderService uses — but doesn't post.
+export const cloneTemplateService = async (orderId, storeUrl, token) => {
+  const shopifyApi = createShopifyApi(storeUrl, token);
+  const id = orderId.toString().trim();
+
+  let src;
+  if (/^\d+$/.test(id)) {
+    const { data } = await shopifyApi.get(`/orders/${id}.json`);
+    src = data.order;
+  } else {
+    const name = id.startsWith("#") ? id : `#${id}`;
+    const search = await shopifyApi.get(
+      `/orders.json?name=${encodeURIComponent(name)}&status=any`
+    );
+    src = search.data.orders?.[0];
+    if (!src) throw new Error(`Order ${name} not found`);
+  }
+
+  return { source: { id: src.id, name: src.name }, template: cloneOrderForCreate(src) };
 };
 
 export const duplicateOrderService = async (
