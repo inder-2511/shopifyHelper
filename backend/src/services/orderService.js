@@ -238,7 +238,37 @@ const stripAddress = (addr) => {
 // (ids, timestamps, totals, confirmation numbers). Reproducing financial_status
 // "paid" requires posting a matching transaction — just copying the string
 // leaves the new order as "pending".
-export const cloneOrderForCreate = (src) => {
+// Order-level data that Shopify stores adjacent to the order record and does NOT
+// return on the default GET /orders/{id}.json. Fetch each as its own endpoint and
+// pass the lot through as `extras` to cloneOrderForCreate so they end up in the
+// cloned payload.
+//
+// Currently covered: localization_extensions (holds Brazil CPF/CNPJ and similar
+// country-specific tax IDs). Add more here as cases come up.
+export const fetchOrderExtras = async (shopifyApi, orderIdNum) => {
+  const extras = {};
+  try {
+    const { data } = await shopifyApi.get(
+      `/orders/${orderIdNum}/localization_extensions.json`
+    );
+    if (data?.localization_extensions?.length) {
+      extras.localization_extensions = data.localization_extensions.map((ext) => ({
+        country_code: ext.country_code,
+        purpose:      ext.purpose,
+        title:        ext.title,
+        value:        ext.value,
+      }));
+    }
+  } catch (err) {
+    // Some stores reply 404/403 if there are no extensions or the token lacks the
+    // scope — not fatal, just means we skip them.
+    const status = err.response?.status;
+    if (status !== 404 && status !== 403) throw err;
+  }
+  return extras;
+};
+
+export const cloneOrderForCreate = (src, extras = {}) => {
   const line_items = (src.line_items ?? []).map((item) => {
     const li = {
       variant_id: item.variant_id,
@@ -302,6 +332,12 @@ export const cloneOrderForCreate = (src) => {
 
   if (shipping_lines.length) payload.shipping_lines = shipping_lines;
 
+  // Localization extensions (e.g. Brazil CPF/CNPJ) aren't on the default GET
+  // response — they come from a separate fetch and are passed in via extras.
+  if (extras.localization_extensions?.length) {
+    payload.localization_extensions = extras.localization_extensions;
+  }
+
   if (src.discount_codes?.length) {
     payload.discount_codes = src.discount_codes.map(({ code, amount, type }) => ({
       code, amount, type,
@@ -345,7 +381,12 @@ export const cloneTemplateService = async (orderId, storeUrl, token) => {
     if (!src) throw new Error(`Order ${name} not found`);
   }
 
-  return { source: { id: src.id, name: src.name }, template: cloneOrderForCreate(src) };
+  const extras = await fetchOrderExtras(shopifyApi, src.id);
+
+  return {
+    source:   { id: src.id, name: src.name },
+    template: cloneOrderForCreate(src, extras),
+  };
 };
 
 export const duplicateOrderService = async (
@@ -365,7 +406,8 @@ export const duplicateOrderService = async (
   if (!orders?.length) throw new Error(`Order ${name} not found`);
 
   const src = orders[0];
-  const newOrder = cloneOrderForCreate(src);
+  const extras = await fetchOrderExtras(shopifyApi, src.id);
+  const newOrder = cloneOrderForCreate(src, extras);
   const result = await postOrder(shopifyApi, newOrder, viaDraftOrder);
   return { source: src, ...result };
 };
