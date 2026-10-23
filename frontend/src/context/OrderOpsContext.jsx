@@ -23,6 +23,7 @@ const idleBatch = {
   errorContext: "",     // e.g. "on order 3 of 10"
   cancelled: false,
   droppedFields: [],    // order-only fields the draft-order path couldn't carry
+  warnings: [],         // non-fatal issues from backend (e.g. missing scope for extras)
 };
 
 const idleFetch = { loading: false, order: null, error: null };
@@ -128,6 +129,12 @@ export function OrderOpsProvider({ children }) {
           orders: [entry, ...prev.orders],
           progress: { done, total: count },
           droppedFields: result.droppedFields?.length ? result.droppedFields : prev.droppedFields,
+          warnings: result.warnings?.length
+            // Dedupe by message so N orders in a batch don't repeat the same warning N times.
+            ? Array.from(
+                new Map([...prev.warnings, ...result.warnings].map((w) => [w.message, w])).values()
+              )
+            : prev.warnings,
         }));
         if (activityLabel) addActivity("order", activityLabel(order, result));
       }

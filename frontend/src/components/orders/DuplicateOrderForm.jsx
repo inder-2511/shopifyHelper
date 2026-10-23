@@ -8,7 +8,7 @@ import ErrorBanner from "../common/ErrorBanner";
 
 function DuplicateOrderForm() {
   const { storeUrl, setStoreUrl, token, setToken, duplicateOp, runDuplicateBatch, cancelOp, clearError } = useOrderOps();
-  const { loading, progress, orders, error, errorContext, droppedFields } = duplicateOp;
+  const { loading, progress, orders, error, errorContext, droppedFields, warnings } = duplicateOp;
 
   const [orderName, setOrderName] = useState("");
   const [count, setCount]         = useState(1);
@@ -108,7 +108,7 @@ function DuplicateOrderForm() {
         </div>
       )}
 
-      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="duplicated" showSource droppedFields={droppedFields} />
+      <OrderResultsPanel progress={progress} loading={loading} orders={orders} verb="duplicated" showSource droppedFields={droppedFields} warnings={warnings} />
     </div>
   );
 }

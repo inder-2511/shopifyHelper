@@ -271,28 +271,62 @@ export const resolveOrder = async (shopifyApi, rawInput) => {
 // cloned payload.
 //
 // Currently covered: localization_extensions (holds Brazil CPF/CNPJ and similar
-// country-specific tax IDs). Add more here as cases come up.
+// country-specific tax IDs). The endpoint requires the `read_customers` scope.
+//
+// Returns `{ extras, warnings[] }` so the caller can surface non-fatal problems
+// (e.g. "token lacks scope") without failing the whole duplication.
 export const fetchOrderExtras = async (shopifyApi, orderIdNum) => {
   const extras = {};
+  const warnings = [];
+
   try {
     const { data } = await shopifyApi.get(
       `/orders/${orderIdNum}/localization_extensions.json`
     );
-    if (data?.localization_extensions?.length) {
-      extras.localization_extensions = data.localization_extensions.map((ext) => ({
+    const list = data?.localization_extensions ?? [];
+    if (list.length) {
+      extras.localization_extensions = list.map((ext) => ({
         country_code: ext.country_code,
         purpose:      ext.purpose,
         title:        ext.title,
         value:        ext.value,
       }));
+      console.log(
+        `[extras] order ${orderIdNum}: carried over ${list.length} localization_extension(s)`
+      );
+    } else {
+      console.log(`[extras] order ${orderIdNum}: no localization_extensions`);
     }
   } catch (err) {
-    // Some stores reply 404/403 if there are no extensions or the token lacks the
-    // scope — not fatal, just means we skip them.
     const status = err.response?.status;
-    if (status !== 404 && status !== 403) throw err;
+    const detail =
+      typeof err.response?.data === "object"
+        ? JSON.stringify(err.response.data)
+        : err.response?.data ?? err.message;
+
+    if (status === 404) {
+      // 404 here means the endpoint has no entries for this order — fine, skip.
+      console.log(`[extras] order ${orderIdNum}: localization_extensions endpoint 404 (none)`);
+    } else if (status === 403 || status === 401) {
+      // Scope issue — surface so the user can add `read_customers` and retry.
+      const warning =
+        "Couldn't read localization_extensions (e.g. Brazil CPF/CNPJ) — the Admin API token " +
+        "is missing the `read_customers` scope. Grant it in the Shopify app config and reinstall " +
+        "to carry those fields over on duplicate.";
+      console.warn(`[extras] order ${orderIdNum}: ${status} — ${detail}`);
+      warnings.push({ kind: "missing_scope", message: warning, status });
+    } else {
+      // Anything else: don't fail the duplicate, but tell the caller.
+      console.warn(`[extras] order ${orderIdNum}: ${status ?? "?"} — ${detail}`);
+      warnings.push({
+        kind: "extras_fetch_failed",
+        message: `Couldn't read order extras (status ${status ?? "?"}): ${detail}`,
+        status,
+      });
+    }
   }
-  return extras;
+
+  return { extras, warnings };
 };
 
 export const cloneOrderForCreate = (src, extras = {}) => {
@@ -394,11 +428,12 @@ export const cloneOrderForCreate = (src, extras = {}) => {
 export const cloneTemplateService = async (orderId, storeUrl, token) => {
   const shopifyApi = createShopifyApi(storeUrl, token);
   const src = await resolveOrder(shopifyApi, orderId);
-  const extras = await fetchOrderExtras(shopifyApi, src.id);
+  const { extras, warnings } = await fetchOrderExtras(shopifyApi, src.id);
 
   return {
     source:   { id: src.id, name: src.name },
     template: cloneOrderForCreate(src, extras),
+    warnings,
   };
 };
 
@@ -410,8 +445,8 @@ export const duplicateOrderService = async (
 ) => {
   const shopifyApi = createShopifyApi(storeUrl, token);
   const src = await resolveOrder(shopifyApi, orderName);
-  const extras = await fetchOrderExtras(shopifyApi, src.id);
+  const { extras, warnings } = await fetchOrderExtras(shopifyApi, src.id);
   const newOrder = cloneOrderForCreate(src, extras);
   const result = await postOrder(shopifyApi, newOrder, viaDraftOrder);
-  return { source: src, ...result };
+  return { source: src, warnings, ...result };
 };

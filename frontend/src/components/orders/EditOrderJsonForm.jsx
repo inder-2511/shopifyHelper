@@ -69,6 +69,7 @@ function EditOrderJsonForm() {
 
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [warnings, setWarnings] = useState([]);
 
   const resultRef = useRef(null);
   useScrollOnTruthy(resultRef, result || error);
@@ -116,19 +117,25 @@ function EditOrderJsonForm() {
     }
     setPrefilling(true);
     setError(null);
+    setWarnings([]);
     try {
       let json;
       let successMsg;
+      let w = [];
       if (raw) {
         const order = await fetchOrderApi(storeUrl, token, sourceId.trim());
         json = JSON.stringify(order, null, 2);
         successMsg = `Loaded raw order ${order.name ?? sourceId}`;
       } else {
-        const { template, source } = await cloneTemplateApi(storeUrl, token, sourceId.trim());
+        const { template, source, warnings: respWarnings } = await cloneTemplateApi(
+          storeUrl, token, sourceId.trim()
+        );
         json = JSON.stringify(template, null, 2);
         successMsg = `Prefilled from ${source?.name ?? sourceId} — edit any field, then Create`;
+        w = respWarnings ?? [];
       }
       setBodyVal(json);
+      setWarnings(w);
       showToast(successMsg, "success");
     } catch (err) {
       setError(classifyError(err));
@@ -342,6 +349,30 @@ function EditOrderJsonForm() {
       <div ref={resultRef} className="scroll-mt-6" />
 
       <ErrorBanner error={error} onDismiss={() => setError(null)} />
+
+      {warnings.length > 0 && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+            <div className="flex-1 min-w-0 space-y-1">
+              <p className="font-semibold">Some fields couldn't be carried over</p>
+              <ul className="text-xs leading-relaxed list-disc list-inside space-y-0.5">
+                {warnings.map((w, i) => (
+                  <li key={i}>{w.message}</li>
+                ))}
+              </ul>
+            </div>
+            <button
+              onClick={() => setWarnings([])}
+              className="p-1 rounded-md hover:bg-white/40 dark:hover:bg-black/20"
+              title="Dismiss"
+            >
+              <AlertTriangle size={0} className="hidden" />
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {result?.order && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">

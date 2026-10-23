@@ -14,7 +14,7 @@ const statusColor = (s) => {
  * Shared progress + orders table used by Create, Duplicate, and Custom order forms.
  * Reads batch state (progress + orders) from parent.
  */
-function OrderResultsPanel({ progress, loading, orders, verb = "created", showSource = false, droppedFields = [] }) {
+function OrderResultsPanel({ progress, loading, orders, verb = "created", showSource = false, droppedFields = [], warnings = [] }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -41,6 +41,21 @@ function OrderResultsPanel({ progress, loading, orders, verb = "created", showSo
               style={{ width: `${(progress.done / progress.total) * 100}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Non-fatal warnings bubbled up from the backend (e.g. missing read_customers
+          scope → couldn't carry over CPF/CNPJ localization extensions). */}
+      {warnings.length > 0 && (
+        <div className="col-span-3 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-5 py-3">
+          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">
+            Some fields couldn't be carried over
+          </p>
+          <ul className="text-[11px] text-amber-800 dark:text-amber-300 list-disc list-inside space-y-0.5">
+            {warnings.map((w, i) => (
+              <li key={i}>{w.message}</li>
+            ))}
+          </ul>
         </div>
       )}
 
