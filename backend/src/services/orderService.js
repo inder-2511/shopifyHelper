@@ -203,6 +203,101 @@ export const fetchOrderService = async (orderId, storeUrl, token) => {
   return orders[0];
 };
 
+// Server-managed fields on an address object (ids/snapshots) that Shopify will
+// reject or overwrite on create.
+const stripAddress = (addr) => {
+  if (!addr) return undefined;
+  // eslint-disable-next-line no-unused-vars
+  const { id, country_name, latitude, longitude, name, default: _d, ...rest } = addr;
+  return rest;
+};
+
+// Build a POST /orders.json payload from a full source order, preserving every
+// field Shopify will accept on create. Drops read-only server-managed fields
+// (ids, timestamps, totals, confirmation numbers). Reproducing financial_status
+// "paid" requires posting a matching transaction — just copying the string
+// leaves the new order as "pending".
+const cloneOrderForCreate = (src) => {
+  const line_items = (src.line_items ?? []).map((item) => {
+    const li = {
+      variant_id: item.variant_id,
+      quantity:   item.quantity,
+      price:      item.price,
+    };
+    if (item.grams != null && Number(item.grams) > 0) li.grams = Number(item.grams);
+    if (item.title)                  li.title = item.title;
+    if (item.sku)                    li.sku = item.sku;
+    if (item.name)                   li.name = item.name;
+    if (item.vendor)                 li.vendor = item.vendor;
+    if (item.requires_shipping != null) li.requires_shipping = item.requires_shipping;
+    if (item.taxable != null)        li.taxable = item.taxable;
+    if (item.fulfillment_service)    li.fulfillment_service = item.fulfillment_service;
+    if (item.properties?.length)     li.properties = item.properties;
+    if (item.tax_lines?.length) {
+      li.tax_lines = item.tax_lines.map(({ title, price, rate }) => ({ title, price, rate }));
+    }
+    return li;
+  });
+
+  const shipping_lines = (src.shipping_lines ?? []).map((sl) => {
+    const line = { title: sl.title, price: sl.price };
+    if (sl.code)                              line.code = sl.code;
+    if (sl.source)                            line.source = sl.source;
+    if (sl.carrier_identifier)                line.carrier_identifier = sl.carrier_identifier;
+    if (sl.requested_fulfillment_service_id)  line.requested_fulfillment_service_id = sl.requested_fulfillment_service_id;
+    return line;
+  });
+
+  const payload = {
+    line_items,
+    shipping_address:        stripAddress(src.shipping_address),
+    billing_address:         stripAddress(src.billing_address),
+    email:                   src.email ?? undefined,
+    phone:                   src.phone ?? undefined,
+    currency:                src.currency ?? undefined,
+    taxes_included:          src.taxes_included ?? undefined,
+    tax_exempt:              src.tax_exempt ?? undefined,
+    note:                    src.note ?? undefined,
+    note_attributes:         src.note_attributes?.length ? src.note_attributes : undefined,
+    tags:                    src.tags ?? undefined,
+    source_name:             src.source_name ?? undefined,
+    po_number:               src.po_number ?? undefined,
+    buyer_accepts_marketing: src.buyer_accepts_marketing ?? undefined,
+    financial_status:        src.financial_status ?? undefined,
+    fulfillment_status:      src.fulfillment_status ?? undefined,
+    customer_locale:         src.customer_locale ?? undefined,
+    // Default to not spamming the customer again on a duplicate. Explicit so
+    // it survives any Shopify default change.
+    send_receipt:              false,
+    send_fulfillment_receipt:  false,
+  };
+
+  if (shipping_lines.length) payload.shipping_lines = shipping_lines;
+
+  if (src.discount_codes?.length) {
+    payload.discount_codes = src.discount_codes.map(({ code, amount, type }) => ({
+      code, amount, type,
+    }));
+  }
+
+  // Reproduce the paid status with a matching transaction. financial_status alone
+  // leaves the new order "pending" unless a transaction accompanies it.
+  if (src.financial_status === "paid" || src.financial_status === "partially_paid") {
+    payload.transactions = [{
+      kind:    "sale",
+      status:  "success",
+      amount:  src.total_price,
+      gateway: src.payment_gateway_names?.[0] || "bogus",
+    }];
+  }
+
+  for (const key of Object.keys(payload)) {
+    if (payload[key] === undefined) delete payload[key];
+  }
+
+  return payload;
+};
+
 export const duplicateOrderService = async (
   orderName,
   storeUrl,
@@ -220,21 +315,7 @@ export const duplicateOrderService = async (
   if (!orders?.length) throw new Error(`Order ${name} not found`);
 
   const src = orders[0];
-
-  const newOrder = {
-    line_items: src.line_items.map((item) => ({
-      variant_id: item.variant_id,
-      quantity: item.quantity,
-      price: item.price,
-    })),
-    shipping_address: src.shipping_address,
-    billing_address: src.billing_address,
-    email: src.email,
-    financial_status: "paid",
-    send_receipt: false,
-    send_fulfillment_receipt: false,
-  };
-
+  const newOrder = cloneOrderForCreate(src);
   const result = await postOrder(shopifyApi, newOrder, viaDraftOrder);
   return { source: src, ...result };
 };
