@@ -279,7 +279,7 @@ function OrderBatchForm({ custom }) {
       toEntry: (r) => ({
         id: r.order.id,
         reference: r.order.reference,
-        status: stateName(r.order.current_state),
+        status: stateName(r.order.current_state || currentState),
         total: Number(r.order.total_paid_tax_incl ?? 0).toFixed(2),
         currency: currencyIso(r.order.id_currency),
       }),
@@ -453,7 +453,7 @@ export function DuplicateOrderPage() {
         id: r.order.id,
         reference: r.order.reference,
         source: `#${r.source.id} (${r.source.reference})`,
-        status: stateName(r.order.current_state),
+        status: stateName(r.order.current_state || state || r.source.current_state),
         total: Number(r.order.total_paid_tax_incl ?? 0).toFixed(2),
         currency: currencyIso(r.order.id_currency),
       }),

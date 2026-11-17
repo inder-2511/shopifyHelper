@@ -109,6 +109,19 @@ const resolveAddress = async (api, address = {}, customer, languageIds) => {
   return { address: unwrap(await psWriteXml(api, "POST", "addresses", xml), "address"), created: true };
 };
 
+/**
+ * The reply to a POST doesn't always carry every field (e.g. `current_state`), so read
+ * the finished order back. Falls back to the reply if the read isn't possible.
+ */
+const readBack = async (api, created) => {
+  try {
+    const full = unwrap(await psGetById(api, "orders", created.id), "order");
+    return full ? { ...created, ...full } : created;
+  } catch {
+    return created;
+  }
+};
+
 const defaultCurrency = async (api) => {
   const { data } = await psGet(api, "currencies", { display: "full" });
   const list = listOf(data, "currencies").filter((c) => String(c.active) !== "0" && String(c.deleted) !== "1");
@@ -234,7 +247,7 @@ export const createOrderService = async (api, input) => {
     },
   };
   const { xml: orderXml, dropped } = await buildResourceXml(api, "orders", orderValues, languageIds);
-  const order = unwrap(await psWriteXml(api, "POST", "orders", orderXml), "order");
+  const order = await readBack(api, unwrap(await psWriteXml(api, "POST", "orders", orderXml), "order"));
 
   return {
     order,
@@ -289,7 +302,7 @@ export const duplicateOrderService = async (api, idOrReference, { currentState }
   };
 
   const { xml, dropped } = await buildResourceXml(api, "orders", copy, languageIds);
-  const order = unwrap(await psWriteXml(api, "POST", "orders", xml), "order");
+  const order = await readBack(api, unwrap(await psWriteXml(api, "POST", "orders", xml), "order"));
   return { source, order, created: { cart: cart.id }, dropped };
 };
 
