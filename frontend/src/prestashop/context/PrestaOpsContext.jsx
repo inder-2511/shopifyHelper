@@ -19,6 +19,7 @@ const idleBatch = {
   errorContext: "", // e.g. "stopped at order 3 of 10 — 2 succeeded"
   cancelled: false,
   dropped: [],      // fields the store wouldn't accept (read-only / unknown)
+  warnings: [],     // non-fatal notes from the backend (price override skipped, status corrected...)
 };
 
 /**
@@ -78,6 +79,7 @@ export function PrestaOpsProvider({ children }) {
         orders: [entry, ...prev.orders],
         progress: { done, total: count },
         dropped: Array.from(new Set([...prev.dropped, ...(result.dropped ?? [])])),
+        warnings: Array.from(new Set([...prev.warnings, ...(result.warnings ?? [])])),
       }));
       addActivity("order", label(result));
     }

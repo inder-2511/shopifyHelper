@@ -10,7 +10,7 @@ const pageBtn =
 
 /** Progress bar + paged table of the orders a batch created. Same layout as the Shopify helper's. */
 export default function OrderResultsPanel({ op, verb = "created", showSource = false }) {
-  const { loading, progress, orders, dropped = [] } = op;
+  const { loading, progress, orders, dropped = [], warnings = [] } = op;
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -35,6 +35,15 @@ export default function OrderResultsPanel({ op, verb = "created", showSource = f
               style={{ width: `${(progress.done / progress.total) * 100}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {warnings.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-900/20 px-5 py-3">
+          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">Worth a look</p>
+          <ul className="text-[11px] text-amber-800 dark:text-amber-300 list-disc list-inside space-y-0.5">
+            {warnings.map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import {
   psGet,
   psGetById,
+  psDelete,
   psWriteXml,
   buildResourceXml,
   getLanguageIds,
@@ -122,6 +123,86 @@ const readBack = async (api, created) => {
   }
 };
 
+/**
+ * PrestaShop prices an order from the cart (catalogue price, specific prices, address
+ * country, carrier) and ignores the totals we send. To honour a "price override" we add a
+ * temporary customer-specific price, then remove it once the order exists.
+ */
+const addPriceOverrides = async (api, lines, customer, languageIds) => {
+  const created = [];
+  const warnings = [];
+  for (const l of lines.filter((x) => x.override)) {
+    try {
+      const { xml } = await buildResourceXml(
+        api,
+        "specific_prices",
+        {
+          id_product: l.product_id,
+          id_product_attribute: l.product_attribute_id,
+          id_customer: customer.id,
+          id_shop: 0, id_shop_group: 0, id_currency: 0, id_country: 0, id_group: 0, id_cart: 0,
+          id_specific_price_rule: 0,
+          price: l.excl,
+          from_quantity: 1,
+          reduction: 0,
+          reduction_type: "amount",
+          reduction_tax: 1,
+          from: "0000-00-00 00:00:00",
+          to: "0000-00-00 00:00:00",
+        },
+        languageIds
+      );
+      const sp = unwrap(await psWriteXml(api, "POST", "specific_prices", xml), "specific_price");
+      if (sp?.id) created.push(sp.id);
+    } catch (e) {
+      warnings.push(
+        "Price override for product " + l.product_id + " wasn't applied (" + e.message + ") - the store's own price was used. " +
+          "Overrides need the key to have GET/POST/DELETE on specific_prices."
+      );
+    }
+  }
+  return { created, warnings };
+};
+
+const removePriceOverrides = async (api, ids) => {
+  for (const id of ids) {
+    try {
+      await psDelete(api, "specific_prices", id);
+    } catch {
+      /* best effort - a leftover customer-specific price is harmless */
+    }
+  }
+};
+
+/**
+ * When an order is added through the webservice, PrestaShop runs the payment module's
+ * validateOrder(): if the amount we declare as paid differs from the cart total it
+ * computes, the order lands in "Payment error". Put it in the status that was asked for.
+ */
+const ensureState = async (api, order, wantedState, languageIds, paidWanted) => {
+  if (!wantedState || String(order.current_state) === String(wantedState)) return { order, warnings: [] };
+  try {
+    const { associations: _rows, ...rest } = order;
+    const { xml } = await buildResourceXml(
+      api,
+      "orders",
+      { ...rest, current_state: wantedState, total_paid_real: paidWanted ? rest.total_paid_tax_incl : 0 },
+      languageIds
+    );
+    await psWriteXml(api, "PUT", "orders", xml, order.id);
+    const fixed = await readBack(api, order);
+    if (String(fixed.current_state) !== String(wantedState)) {
+      return { order: fixed, warnings: ["The store left order #" + order.id + " in status #" + fixed.current_state + " (you picked #" + wantedState + ")."] };
+    }
+    return { order: fixed, warnings: [] };
+  } catch (e) {
+    return {
+      order,
+      warnings: ["PrestaShop set order #" + order.id + " to status #" + order.current_state + " instead of #" + wantedState + ", and changing it failed: " + e.message],
+    };
+  }
+};
+
 const defaultCurrency = async (api) => {
   const { data } = await psGet(api, "currencies", { display: "full" });
   const list = listOf(data, "currencies").filter((c) => String(c.active) !== "0" && String(c.deleted) !== "1");
@@ -172,6 +253,7 @@ export const createOrderService = async (api, input) => {
       unit_price_tax_incl: money(excl * rate),
       qty,
       excl,
+      override: item.priceOverride != null && item.priceOverride !== "" && Number(item.priceOverride) !== Number(product.price),
     });
   }
 
@@ -247,12 +329,21 @@ export const createOrderService = async (api, input) => {
     },
   };
   const { xml: orderXml, dropped } = await buildResourceXml(api, "orders", orderValues, languageIds);
-  const order = await readBack(api, unwrap(await psWriteXml(api, "POST", "orders", orderXml), "order"));
+  const overrides = await addPriceOverrides(api, lines, customer, languageIds);
+  let posted;
+  try {
+    posted = await readBack(api, unwrap(await psWriteXml(api, "POST", "orders", orderXml), "order"));
+  } finally {
+    await removePriceOverrides(api, overrides.created);
+  }
+  const { order, warnings } = await ensureState(api, posted, currentState, languageIds, paid);
 
   return {
     order,
     created: { customer: customerCreated ? customer.id : null, address: addressCreated ? address.id : null, cart: cart.id },
-    totals: { excl: money(totalExcl), incl: money(totalIncl), paid },
+    // What the store actually stored - PrestaShop recalculates these from the cart.
+    totals: { excl: order.total_paid_tax_excl, incl: order.total_paid_tax_incl, paid },
+    warnings: [...overrides.warnings, ...warnings],
     dropped,
   };
 };
@@ -302,8 +393,32 @@ export const duplicateOrderService = async (api, idOrReference, { currentState }
   };
 
   const { xml, dropped } = await buildResourceXml(api, "orders", copy, languageIds);
-  const order = await readBack(api, unwrap(await psWriteXml(api, "POST", "orders", xml), "order"));
-  return { source, order, created: { cart: cart.id }, dropped };
+  // The copy is priced from the cart again, so rows whose price differed from the catalogue
+  // (a price override on the original) need the same temporary customer-specific price.
+  const priceLines = [];
+  for (const r of sourceRows) {
+    const excl = Number(r.unit_price_tax_excl ?? r.product_price);
+    let catalog = null;
+    try {
+      catalog = Number(unwrap(await psGetById(api, "products", r.product_id), "product")?.price);
+    } catch {
+      catalog = null;
+    }
+    if (Number.isFinite(excl) && (catalog === null || Math.abs(catalog - excl) > 0.0001)) {
+      priceLines.push({ product_id: r.product_id, product_attribute_id: r.product_attribute_id, excl, override: true });
+    }
+  }
+  const overrides = await addPriceOverrides(api, priceLines, { id: source.id_customer }, languageIds);
+  let posted;
+  try {
+    posted = await readBack(api, unwrap(await psWriteXml(api, "POST", "orders", xml), "order"));
+  } finally {
+    await removePriceOverrides(api, overrides.created);
+  }
+  const wanted = currentState || source.current_state;
+  const wantedState = await getOrderState(api, wanted);
+  const { order, warnings } = await ensureState(api, posted, wanted, languageIds, wantedState ? String(wantedState.paid) === "1" : false);
+  return { source, order, created: { cart: cart.id }, warnings: [...overrides.warnings, ...warnings], dropped };
 };
 
 /** PUT an edited order JSON back. Accepts the bare object or { order: {...} }. */

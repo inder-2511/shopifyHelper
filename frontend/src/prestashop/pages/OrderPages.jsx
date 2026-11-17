@@ -312,7 +312,7 @@ function OrderBatchForm({ custom }) {
     <Page
       title={custom ? "Custom Order" : "Create Order"}
       subtitle={custom
-        ? "Every field under your control — customer, address, payment, shipping and totals"
+        ? "Choose the customer, edit every address field and set the payment details"
         : "Pick products, an address and how many — customer, address, cart and order are created for you"}
     >
       <form onSubmit={submit} className="space-y-5">
@@ -381,17 +381,13 @@ function OrderBatchForm({ custom }) {
               <>
                 <Field label="Payment module" hint="Technical name, e.g. ps_wirepayment, ps_checkpayment"><input value={opts.paymentModule} onChange={(e) => setOpt("paymentModule")(e.target.value)} className={inputCls} /></Field>
                 <Field label="Payment label"><input value={opts.paymentLabel} onChange={(e) => setOpt("paymentLabel")(e.target.value)} className={inputCls} /></Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Shipping (excl. tax)"><input type="number" min="0" step="0.01" value={opts.shippingCost} onChange={(e) => setOpt("shippingCost")(e.target.value)} className={inputCls} /></Field>
-                  <Field label="Tax rate %" hint="Applied to all lines"><input type="number" min="0" step="0.01" value={opts.taxRate} onChange={(e) => setOpt("taxRate")(e.target.value)} className={inputCls} /></Field>
-                </div>
               </>
             )}
             <CountField label="Number of Orders" hint="One customer + address are reused for the whole batch" value={count} onChange={setCount} />
           </div>
           <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-3">
-            Prices come from each product's tax-excluded price (or your override). Totals are computed here, not by PrestaShop's cart rules — so discounts and per-country taxes aren't applied.
-            {!custom && <> Need payment, shipping or tax control? Use <a href="/presta/orders/custom" className="text-pink-600 dark:text-pink-400 hover:underline">Custom Order</a>.</>}
+            PrestaShop prices the order itself from the cart: the product's price, taxes for the address's country, and the carrier's shipping cost. A price override is applied as a temporary customer-specific price (the API key needs GET/POST/DELETE on specific_prices for that).
+            {!custom && <> Need to set payment details or edit address fields? Use <a href="/presta/orders/custom" className="text-pink-600 dark:text-pink-400 hover:underline">Custom Order</a>.</>}
           </p>
         </Card>
 
