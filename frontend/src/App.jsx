@@ -30,11 +30,13 @@ import { SavedTogglesProvider } from "./context/SavedTogglesContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { PrestaProvider } from "./prestashop/context/PrestaContext";
+import { PrestaOpsProvider } from "./prestashop/context/PrestaOpsContext";
 import { lastPlatform } from "./utils/platform";
 import PrestaDashboard from "./prestashop/pages/PrestaDashboard";
 import PrestaSettings from "./prestashop/pages/PrestaSettings";
 import {
   CreateOrderPage as PrestaCreateOrder,
+  CustomOrderPage as PrestaCustomOrder,
   DuplicateOrderPage as PrestaDuplicateOrder,
   FetchOrderPage as PrestaFetchOrder,
   EditOrderPage as PrestaEditOrder,
@@ -67,6 +69,7 @@ function App() {
     <OrderOpsProvider>
     <ProductOpsProvider>
     <PrestaProvider>
+    <PrestaOpsProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
@@ -103,6 +106,7 @@ function App() {
         <Route path="/presta" element={<PrestaDashboard />} />
         <Route path="/presta/orders" element={<PrestaCreateOrder />} />
         <Route path="/presta/orders/duplicate" element={<PrestaDuplicateOrder />} />
+        <Route path="/presta/orders/custom" element={<PrestaCustomOrder />} />
         <Route path="/presta/orders/fetch" element={<PrestaFetchOrder />} />
         <Route path="/presta/orders/edit" element={<PrestaEditOrder />} />
         <Route path="/presta/products" element={<PrestaListProducts />} />
@@ -115,6 +119,7 @@ function App() {
         <Route path="/presta/settings" element={<PrestaSettings />} />
       </Routes>
     </BrowserRouter>
+    </PrestaOpsProvider>
     </PrestaProvider>
     </ProductOpsProvider>
     </OrderOpsProvider>

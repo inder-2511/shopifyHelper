@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Eye, EyeOff, Pencil, Plus, Store as StoreIcon, Trash2, X } from "lucide-react";
 import MainLayout from "../../components/layout/MainLayout";
+import SavedAddressesSection from "../../components/settings/SavedAddressesSection";
 import ThemeSection from "../../components/settings/ThemeSection";
 import BackendInfoSection from "../../components/settings/BackendInfoSection";
 import { useToast } from "../../context/ToastContext";
@@ -104,6 +105,7 @@ export default function PrestaSettings() {
       </div>
       <div className="space-y-5">
         <SavedStoresSection />
+        <SavedAddressesSection />
         <ThemeSection />
         <BackendInfoSection />
       </div>

@@ -37,7 +37,7 @@ const active = (x) => String(x.active) !== "0";
 export const referenceDataService = async (api) => {
   const get = async (resource, params, key = resource) => listOf((await psGet(api, resource, params)).data, key);
 
-  const [countries, zones, carriers, orderStates, currencies, languages, categories, taxGroups] = await Promise.all([
+  const [countries, zones, carriers, orderStates, currencies, languages, categories, taxGroups, states] = await Promise.all([
     safe(async () =>
       (await get("countries", { display: "full", limit: 400 })).map((c) => ({
         id: c.id, name: langValue(c.name), iso: c.iso_code, active: active(c),
@@ -67,9 +67,16 @@ export const referenceDataService = async (api) => {
       }))
     ),
     safe(async () => (await get("tax_rule_groups", { display: "full" })).map((g) => ({ id: g.id, name: g.name, active: active(g) }))),
+    // States are needed for countries that require one (US, CA, IN, AU…): the order form
+    // maps a preset's "Massachusetts" to the store's state id.
+    safe(async () =>
+      (await get("states", { display: "[id,name,iso_code,id_country,active]", limit: 2000 })).map((s) => ({
+        id: s.id, name: s.name, iso: s.iso_code, countryId: s.id_country, active: active(s),
+      }))
+    ),
   ]);
 
-  return { countries, zones, carriers, orderStates, currencies, languages, categories, taxGroups };
+  return { countries, zones, carriers, orderStates, currencies, languages, categories, taxGroups, states };
 };
 
 const RESOURCE_NAME = /^[a-z_]+$/;

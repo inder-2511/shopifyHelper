@@ -75,6 +75,7 @@ const prestashopNav = [
     items: [
       { name: "Create Order",    path: "/presta/orders" },
       { name: "Duplicate Order", path: "/presta/orders/duplicate" },
+      { name: "Custom Order",    path: "/presta/orders/custom" },
       { name: "Fetch Order",     path: "/presta/orders/fetch" },
       { name: "Edit JSON Order", path: "/presta/orders/edit" },
     ],
