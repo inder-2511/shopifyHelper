@@ -36,7 +36,7 @@ export const findProduct = async (api, idOrText) => {
 
   if (/^\d+$/.test(q)) {
     try {
-      const product = unwrap(await psGetById(api, "products", q, { display: "full" }), "product");
+      const product = unwrap(await psGetById(api, "products", q), "product");
       if (product) return product;
     } catch (e) {
       if (e.status !== 404) throw e;

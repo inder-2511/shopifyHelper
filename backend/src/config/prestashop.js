@@ -319,9 +319,17 @@ export const getLanguageIds = async (api) => {
 };
 
 /** Unwrap `{ order: {...} }` from a single-resource JSON response. */
+/**
+ * Pull one resource out of a response. `GET /products/12` returns { product: {...} },
+ * but PrestaShop switches to the list shape ({ products: [{...}] }) as soon as a
+ * `display` parameter is sent, and POST/PUT replies can differ too — accept both.
+ */
 export const unwrap = (data, key) => {
-  if (!data || typeof data !== "object") return null;
-  return data[key] ?? null;
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const direct = data[key];
+  if (direct) return Array.isArray(direct) ? direct[0] ?? null : direct;
+  const list = Object.values(data).find((v) => Array.isArray(v) && v.length && typeof v[0] === "object");
+  return list ? list[0] : null;
 };
 
 export const randomReference = () =>

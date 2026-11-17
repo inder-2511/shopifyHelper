@@ -29,7 +29,7 @@ export const findOrder = async (api, idOrReference) => {
 
   if (/^\d+$/.test(q)) {
     try {
-      const order = unwrap(await psGetById(api, "orders", q, { display: "full" }), "order");
+      const order = unwrap(await psGetById(api, "orders", q), "order");
       if (order) return order;
     } catch (e) {
       if (e.status !== 404) throw e;
@@ -145,7 +145,7 @@ export const createOrderService = async (api, input) => {
   const lines = [];
   for (const item of items) {
     const qty = Math.max(1, Number(item.quantity) || 1);
-    const product = unwrap(await psGetById(api, "products", item.productId, { display: "full" }), "product");
+    const product = unwrap(await psGetById(api, "products", item.productId), "product");
     if (!product) throw notFound(`Product ${item.productId} not found`);
     const excl = Number(item.priceOverride ?? product.price);
     lines.push({
