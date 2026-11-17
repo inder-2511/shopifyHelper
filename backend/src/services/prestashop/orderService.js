@@ -52,6 +52,23 @@ const getOrderState = async (api, id) => {
   }
 };
 
+/**
+ * A customer created through the webservice has no group unless we give one, and the
+ * Back Office order page crashes ("Undefined array key 0") on a customer without groups.
+ * Use the store's "Customer" group (id 3 on a stock install).
+ */
+const defaultCustomerGroup = async (api) => {
+  try {
+    const { data } = await psGet(api, "groups", { display: "full" });
+    const groups = listOf(data, "groups");
+    const named = groups.find((g) => /^customers?$/i.test(String(langValue(g.name)).trim()));
+    const pick = named ?? groups.find((g) => String(g.id) === "3") ?? groups[groups.length - 1];
+    return Number(pick?.id) || 3;
+  } catch {
+    return 3;
+  }
+};
+
 const resolveCustomer = async (api, customer = {}, languageIds) => {
   if (customer.id) {
     const found = unwrap(await psGetById(api, "customers", customer.id), "customer");
@@ -64,10 +81,13 @@ const resolveCustomer = async (api, customer = {}, languageIds) => {
   const [existing] = listOf(data, "customers");
   if (existing) return { customer: existing, created: false };
 
+  const group = await defaultCustomerGroup(api);
   const { xml } = await buildResourceXml(
     api,
     "customers",
     {
+      id_default_group: group,
+      associations: { groups: [{ id: group }] },
       firstname: customer.firstname || "Test",
       lastname: customer.lastname || "Customer",
       email: customer.email,
