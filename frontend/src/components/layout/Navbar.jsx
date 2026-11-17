@@ -1,15 +1,17 @@
 import { Trash2, Sun, Moon } from "lucide-react";
 import { useActivity } from "../../context/ActivityContext";
 import { useTheme } from "../../context/ThemeContext";
+import { usePlatform } from "../../utils/platform";
 
 function Navbar() {
   const { clearActivities } = useActivity();
   const { dark, toggle } = useTheme();
+  const { config } = usePlatform();
 
   return (
     <div className="h-16 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between px-8">
       <h2 className="text-xl font-bold text-gray-800 dark:text-slate-100">
-        Shopify Admin Panel
+        {config.adminTitle}
       </h2>
 
       <div className="flex items-center gap-3">

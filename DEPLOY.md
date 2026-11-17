@@ -40,3 +40,10 @@ Playwright-driven features (Create Store, Store Setup, Shipping, Products import
 ## Local dev
 
 No env vars required. Frontend defaults to `http://localhost:5000`; backend allows all origins and enables all routes when the flags above are unset. Copy `.env.example` in each folder if you want to override defaults.
+
+## PrestaShop mode
+
+The logo dropdown in the sidebar switches between Shopify and PrestaShop. PrestaShop needs **no extra env vars** — each page sends the store's Shop URL and Webservice key with the request (routes live under `/api/presta/*`).
+
+- The **backend** talks to the store, not the browser, so the store must be reachable from wherever the backend runs. A hosted backend (Render) cannot reach a `localhost` or private-network PrestaShop — run the backend locally for those.
+- In the store: Back Office → Advanced Parameters → Webservice → enable the webservice and add a key with the GET/POST/PUT/DELETE permissions your tests need (orders, carts, customers, addresses, products, stock_availables, plus read access to countries, carriers, order_states, currencies, languages, categories, zones, tax_rule_groups for the dropdowns).

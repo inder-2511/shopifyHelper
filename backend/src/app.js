@@ -6,6 +6,7 @@ import productRoutes from "./routes/productRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
 import shippingRoutes from "./routes/shippingRoutes.js";
 import storeSetupRoutes from "./routes/storeSetupRoutes.js";
+import prestashopRoutes from "./routes/prestashopRoutes.js";
 
 const app = express();
 
@@ -30,4 +31,5 @@ app.use("/api/products", productRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/store-setup", storeSetupRoutes);
+app.use("/api/presta", prestashopRoutes);
 export default app;
